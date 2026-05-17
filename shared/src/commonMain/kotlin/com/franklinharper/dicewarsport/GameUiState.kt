@@ -15,6 +15,7 @@ data class GameUiState(
     val playerIds: Map<Int, String> = emptyMap(),
     val playerStatsHistory: PlayerStatsHistory = PlayerStatsHistory.default(),
     val eliminatedPlayerIds: List<String> = emptyList(),
+    val eliminatedPlayerSeats: List<Int> = emptyList(),
     val gameStatsRecorded: Boolean = false,
     val confirmResetStats: Boolean = false,
 )

@@ -86,12 +86,12 @@ class GameReducer(
         GameAction.StartPressed -> {
             val newGame = DicewarsGame.generate(state.selectedPlayerCount, random)
             val assignedAiStrategies = assignAiStrategiesFor(newGame, spectateMode = false)
-            Result(state.copy(game = newGame, screen = DicewarsScreen.MapPreview, spectateMode = false, playerNames = playerNamesFor(newGame, spectateMode = false, assignedAiStrategies), playerIds = playerIdsFor(newGame, spectateMode = false, assignedAiStrategies), eliminatedPlayerIds = emptyList(), gameStatsRecorded = false, confirmResetStats = false))
+            Result(state.copy(game = newGame, screen = DicewarsScreen.MapPreview, spectateMode = false, playerNames = playerNamesFor(newGame, spectateMode = false, assignedAiStrategies), playerIds = playerIdsFor(newGame, spectateMode = false, assignedAiStrategies), eliminatedPlayerIds = emptyList(), eliminatedPlayerSeats = emptyList(), gameStatsRecorded = false, confirmResetStats = false))
         }
         GameAction.StartSpectate -> {
             val newGame = DicewarsGame.generate(state.selectedPlayerCount, random)
             val assignedAiStrategies = assignAiStrategiesFor(newGame, spectateMode = true)
-            Result(state.copy(game = newGame, screen = DicewarsScreen.MapPreview, spectateMode = true, playerNames = playerNamesFor(newGame, spectateMode = true, assignedAiStrategies), playerIds = playerIdsFor(newGame, spectateMode = true, assignedAiStrategies), eliminatedPlayerIds = emptyList(), gameStatsRecorded = false, confirmResetStats = false))
+            Result(state.copy(game = newGame, screen = DicewarsScreen.MapPreview, spectateMode = true, playerNames = playerNamesFor(newGame, spectateMode = true, assignedAiStrategies), playerIds = playerIdsFor(newGame, spectateMode = true, assignedAiStrategies), eliminatedPlayerIds = emptyList(), eliminatedPlayerSeats = emptyList(), gameStatsRecorded = false, confirmResetStats = false))
         }
         GameAction.AcceptMap -> {
             val newScreen = turnScreenFor(state.game, state.spectateMode)
@@ -100,7 +100,7 @@ class GameReducer(
         GameAction.RejectMap -> {
             val newGame = DicewarsGame.generate(state.game.pmax, random)
             val assignedAiStrategies = assignAiStrategiesFor(newGame, state.spectateMode)
-            Result(state.copy(game = newGame, screen = DicewarsScreen.MapPreview, playerNames = playerNamesFor(newGame, state.spectateMode, assignedAiStrategies), playerIds = playerIdsFor(newGame, state.spectateMode, assignedAiStrategies), eliminatedPlayerIds = emptyList(), gameStatsRecorded = false, confirmResetStats = false))
+            Result(state.copy(game = newGame, screen = DicewarsScreen.MapPreview, playerNames = playerNamesFor(newGame, state.spectateMode, assignedAiStrategies), playerIds = playerIdsFor(newGame, state.spectateMode, assignedAiStrategies), eliminatedPlayerIds = emptyList(), eliminatedPlayerSeats = emptyList(), gameStatsRecorded = false, confirmResetStats = false))
         }
         is GameAction.TerritoryClicked -> onTerritoryClicked(state, action.territoryId)
         GameAction.EndTurn -> onTurnFinished(state)
@@ -145,7 +145,7 @@ class GameReducer(
             random = random,
         )
         val newGame = state.game.resolveBattle(selectedFrom, territoryId, roll)
-        val newEliminatedPlayerIds = appendNewEliminations(state, newGame)
+        val newEliminations = appendNewEliminations(state, newGame)
 
         val battleSounds = listOf(SoundEvent.DICE, if (roll.success) SoundEvent.SUCCESS else SoundEvent.FAIL)
 
@@ -153,7 +153,7 @@ class GameReducer(
         if (terminalScreen != null) {
             val terminalSounds = battleSounds + terminalScreen.soundEvents
             return Result(
-                recordStatsIfNeeded(state.copy(game = newGame, screen = terminalScreen, selectedFrom = null, selectedTo = null, eliminatedPlayerIds = newEliminatedPlayerIds)),
+                recordStatsIfNeeded(state.copy(game = newGame, screen = terminalScreen, selectedFrom = null, selectedTo = null, eliminatedPlayerIds = newEliminations.playerIds, eliminatedPlayerSeats = newEliminations.seatIds)),
                 terminalSounds,
             )
         }
@@ -164,7 +164,7 @@ class GameReducer(
                 screen = turnScreenFor(newGame, state.spectateMode),
                 selectedFrom = null,
                 selectedTo = null,
-                eliminatedPlayerIds = newEliminatedPlayerIds,
+                eliminatedPlayerIds = newEliminations.playerIds, eliminatedPlayerSeats = newEliminations.seatIds,
             ),
             battleSounds,
         )
@@ -183,7 +183,7 @@ class GameReducer(
             random = random,
         )
         val newGame = state.game.resolveBattle(move.from, move.to, roll)
-        val newEliminatedPlayerIds = appendNewEliminations(state, newGame)
+        val newEliminations = appendNewEliminations(state, newGame)
 
         val battleSounds = listOf(SoundEvent.DICE, if (roll.success) SoundEvent.SUCCESS else SoundEvent.FAIL)
 
@@ -191,7 +191,7 @@ class GameReducer(
         if (terminalScreen != null) {
             val terminalSounds = battleSounds + terminalScreen.soundEvents
             return Result(
-                recordStatsIfNeeded(state.copy(game = newGame, screen = terminalScreen, selectedFrom = null, selectedTo = null, eliminatedPlayerIds = newEliminatedPlayerIds)),
+                recordStatsIfNeeded(state.copy(game = newGame, screen = terminalScreen, selectedFrom = null, selectedTo = null, eliminatedPlayerIds = newEliminations.playerIds, eliminatedPlayerSeats = newEliminations.seatIds)),
                 terminalSounds,
             )
         }
@@ -202,7 +202,7 @@ class GameReducer(
                 screen = turnScreenFor(newGame, state.spectateMode),
                 selectedFrom = null,
                 selectedTo = null,
-                eliminatedPlayerIds = newEliminatedPlayerIds,
+                eliminatedPlayerIds = newEliminations.playerIds, eliminatedPlayerSeats = newEliminations.seatIds,
             ),
             battleSounds,
         )
@@ -229,27 +229,30 @@ class GameReducer(
         )
     }
 
-    private fun appendNewEliminations(state: GameUiState, newGame: DicewarsGame): List<String> {
-        val eliminated = state.eliminatedPlayerIds.toMutableList()
+    private data class Eliminations(val playerIds: List<String>, val seatIds: List<Int>)
+
+    private fun appendNewEliminations(state: GameUiState, newGame: DicewarsGame): Eliminations {
+        val eliminatedIds = state.eliminatedPlayerIds.toMutableList()
+        val eliminatedSeats = state.eliminatedPlayerSeats.toMutableList()
         for (p in 0 until newGame.pmax) {
             val id = state.playerIds[p] ?: continue
-            if (id !in eliminated && state.game.players[p].maxConnectedAreaCount > 0 && newGame.players[p].maxConnectedAreaCount == 0) {
-                eliminated += id
+            if (p !in eliminatedSeats && state.game.players[p].maxConnectedAreaCount > 0 && newGame.players[p].maxConnectedAreaCount == 0) {
+                eliminatedSeats += p
+                eliminatedIds += id
             }
         }
-        return eliminated
+        return Eliminations(eliminatedIds, eliminatedSeats)
     }
 
     private fun recordStatsIfNeeded(state: GameUiState): GameUiState {
         if (state.spectateMode || state.gameStatsRecorded) return state
         val winner = (0 until state.game.pmax).firstOrNull { state.game.players[it].maxConnectedAreaCount > 0 } ?: return state
-        val winnerId = state.playerIds[winner] ?: return state
         val participants = (0 until state.game.pmax).mapNotNull { p ->
             val id = state.playerIds[p] ?: return@mapNotNull null
             val name = state.playerNames[p] ?: id
-            PlayerStatsParticipant(id, name)
-        }.distinctBy { it.playerId }
-        val history = state.playerStatsHistory.recordGameResult(participants, winnerId, state.eliminatedPlayerIds)
+            PlayerStatsParticipant(seatId = p, playerId = id, displayName = name)
+        }
+        val history = state.playerStatsHistory.recordGameResult(participants, winner, state.eliminatedPlayerSeats)
         playerStatsStore.save(history)
         return state.copy(playerStatsHistory = history, gameStatsRecorded = true)
     }

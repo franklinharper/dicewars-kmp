@@ -8,12 +8,12 @@ class PlayerStatsHistoryTest {
     fun recordGameResultUpdatesWinsGamesPlayedWinRatioAndScore() {
         val history = PlayerStatsHistory.default().recordGameResult(
             participants = listOf(
-                PlayerStatsParticipant("human", "Human"),
-                PlayerStatsParticipant("target-leader", "Rebel"),
-                PlayerStatsParticipant("cautious", "Turtle"),
+                PlayerStatsParticipant(0, "human", "Human"),
+                PlayerStatsParticipant(1, "target-leader", "Rebel"),
+                PlayerStatsParticipant(2, "cautious", "Turtle"),
             ),
-            winnerPlayerId = "human",
-            eliminationOrderPlayerIds = listOf("cautious", "target-leader"),
+            winnerSeatId = 0,
+            eliminationOrderSeatIds = listOf(2, 1),
         )
 
         val human = history.records.getValue("human")
@@ -33,5 +33,34 @@ class PlayerStatsHistoryTest {
         assertEquals(0, turtle.wins)
         assertEquals(1, turtle.gamesPlayed)
         assertEquals(0, turtle.score)
+    }
+
+    @Test
+    fun duplicateStrategiesAreScoredPerSeatAndAggregatedIntoOneRecord() {
+        val history = PlayerStatsHistory.default().recordGameResult(
+            participants = listOf(
+                PlayerStatsParticipant(0, "human", "Human"),
+                PlayerStatsParticipant(1, "cautious", "Turtle"),
+                PlayerStatsParticipant(2, "cautious", "Turtle"),
+                PlayerStatsParticipant(3, "attack-when-stronger", "Berzerker"),
+                PlayerStatsParticipant(4, "attack-when-stronger", "Berzerker"),
+                PlayerStatsParticipant(5, "strategic", "Emperor"),
+                PlayerStatsParticipant(6, "target-leader", "Rebel"),
+            ),
+            winnerSeatId = 2,
+            eliminationOrderSeatIds = listOf(3, 1, 0, 6, 4, 5),
+        )
+
+        val turtle = history.records.getValue("cautious")
+        val berzerker = history.records.getValue("attack-when-stronger")
+
+        assertEquals(1, turtle.wins)
+        assertEquals(2, turtle.gamesPlayed)
+        assertEquals(50, turtle.winRatioPercent)
+        assertEquals(15, turtle.score)
+
+        assertEquals(0, berzerker.wins)
+        assertEquals(2, berzerker.gamesPlayed)
+        assertEquals(4, berzerker.score)
     }
 }

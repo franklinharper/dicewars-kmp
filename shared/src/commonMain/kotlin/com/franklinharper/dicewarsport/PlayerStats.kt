@@ -21,17 +21,17 @@ data class PlayerStatsHistory(
 
     fun recordGameResult(
         participants: List<PlayerStatsParticipant>,
-        winnerPlayerId: String,
-        eliminationOrderPlayerIds: List<String>,
+        winnerSeatId: Int,
+        eliminationOrderSeatIds: List<Int>,
     ): PlayerStatsHistory {
-        val participantIds = participants.map { it.playerId }
+        val participantBySeat = participants.associateBy { it.seatId }
         val participantCount = participants.size
-        val scoreById = mutableMapOf<String, Int>()
-        eliminationOrderPlayerIds
-            .filter { it in participantIds && it != winnerPlayerId }
+        val scoreBySeat = mutableMapOf<Int, Int>()
+        eliminationOrderSeatIds
+            .filter { it in participantBySeat && it != winnerSeatId }
             .distinct()
-            .forEachIndexed { index, id -> scoreById[id] = index }
-        scoreById[winnerPlayerId] = participantCount * 2
+            .forEachIndexed { index, seatId -> scoreBySeat[seatId] = index }
+        scoreBySeat[winnerSeatId] = participantCount * 2
 
         val updated = records.toMutableMap()
         participants.forEach { participant ->
@@ -41,9 +41,9 @@ data class PlayerStatsHistory(
             )
             updated[participant.playerId] = current.copy(
                 displayName = participant.displayName,
-                wins = current.wins + if (participant.playerId == winnerPlayerId) 1 else 0,
+                wins = current.wins + if (participant.seatId == winnerSeatId) 1 else 0,
                 gamesPlayed = current.gamesPlayed + 1,
-                score = current.score + (scoreById[participant.playerId] ?: 0),
+                score = current.score + (scoreBySeat[participant.seatId] ?: 0),
             )
         }
         return copy(records = updated)
@@ -55,6 +55,7 @@ data class PlayerStatsHistory(
 }
 
 data class PlayerStatsParticipant(
+    val seatId: Int,
     val playerId: String,
     val displayName: String,
 )
