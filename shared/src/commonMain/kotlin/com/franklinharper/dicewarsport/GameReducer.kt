@@ -12,6 +12,7 @@ class GameReducer(
     private val aiStrategies: Map<Int, AiStrategy> = emptyMap(),
     private val playerNames: Map<Int, String> = emptyMap(),
     private val debugPreferences: DebugPreferences = NoOpDebugPreferences(),
+    private val playerStatsStore: PlayerStatsStore = InMemoryPlayerStatsStore(),
 ) {
     private var activeAiStrategies: Map<Int, AiStrategy> = aiStrategies
 
@@ -44,6 +45,25 @@ class GameReducer(
         return names
     }
 
+    private fun playerIdsFor(game: DicewarsGame, spectateMode: Boolean, assignedAiStrategies: Map<Int, AiStrategy>): Map<Int, String> {
+        val ids = mutableMapOf<Int, String>()
+        for (p in 0 until game.pmax) {
+            ids[p] = when {
+                !spectateMode && p == game.user -> "human"
+                else -> aiIdFor(assignedAiStrategies[p])
+            }
+        }
+        return ids
+    }
+
+    private fun aiIdFor(strategy: AiStrategy?): String = when (strategy) {
+        is TargetTheLeader -> "target-leader"
+        is CautiousBot -> "cautious"
+        is AlwaysAttackWhenStrongerBot -> "attack-when-stronger"
+        is StrategicBot -> "strategic"
+        else -> strategy?.name ?: "unknown-bot"
+    }
+
     companion object {
         private const val TAP_THRESHOLD = 5
         private const val TAP_WINDOW_MS = 3000L
@@ -57,7 +77,7 @@ class GameReducer(
     fun reduce(state: GameUiState, action: GameAction): Result = when (action) {
         GameAction.LoadingFinished -> {
             val debugMode = debugPreferences.isDebugMode()
-            Result(state.copy(screen = DicewarsScreen.Title, debugMode = debugMode))
+            Result(state.copy(screen = DicewarsScreen.Title, debugMode = debugMode, playerStatsHistory = playerStatsStore.load()))
         }
         is GameAction.SelectPlayerCount -> Result(
             state.copy(selectedPlayerCount = action.count),
@@ -66,12 +86,12 @@ class GameReducer(
         GameAction.StartPressed -> {
             val newGame = DicewarsGame.generate(state.selectedPlayerCount, random)
             val assignedAiStrategies = assignAiStrategiesFor(newGame, spectateMode = false)
-            Result(state.copy(game = newGame, screen = DicewarsScreen.MapPreview, playerNames = playerNamesFor(newGame, spectateMode = false, assignedAiStrategies)))
+            Result(state.copy(game = newGame, screen = DicewarsScreen.MapPreview, spectateMode = false, playerNames = playerNamesFor(newGame, spectateMode = false, assignedAiStrategies), playerIds = playerIdsFor(newGame, spectateMode = false, assignedAiStrategies), eliminatedPlayerIds = emptyList(), gameStatsRecorded = false, confirmResetStats = false))
         }
         GameAction.StartSpectate -> {
             val newGame = DicewarsGame.generate(state.selectedPlayerCount, random)
             val assignedAiStrategies = assignAiStrategiesFor(newGame, spectateMode = true)
-            Result(state.copy(game = newGame, screen = DicewarsScreen.MapPreview, spectateMode = true, playerNames = playerNamesFor(newGame, spectateMode = true, assignedAiStrategies)))
+            Result(state.copy(game = newGame, screen = DicewarsScreen.MapPreview, spectateMode = true, playerNames = playerNamesFor(newGame, spectateMode = true, assignedAiStrategies), playerIds = playerIdsFor(newGame, spectateMode = true, assignedAiStrategies), eliminatedPlayerIds = emptyList(), gameStatsRecorded = false, confirmResetStats = false))
         }
         GameAction.AcceptMap -> {
             val newScreen = turnScreenFor(state.game, state.spectateMode)
@@ -80,13 +100,20 @@ class GameReducer(
         GameAction.RejectMap -> {
             val newGame = DicewarsGame.generate(state.game.pmax, random)
             val assignedAiStrategies = assignAiStrategiesFor(newGame, state.spectateMode)
-            Result(state.copy(game = newGame, screen = DicewarsScreen.MapPreview, playerNames = playerNamesFor(newGame, state.spectateMode, assignedAiStrategies)))
+            Result(state.copy(game = newGame, screen = DicewarsScreen.MapPreview, playerNames = playerNamesFor(newGame, state.spectateMode, assignedAiStrategies), playerIds = playerIdsFor(newGame, state.spectateMode, assignedAiStrategies), eliminatedPlayerIds = emptyList(), gameStatsRecorded = false, confirmResetStats = false))
         }
         is GameAction.TerritoryClicked -> onTerritoryClicked(state, action.territoryId)
         GameAction.EndTurn -> onTurnFinished(state)
         GameAction.AiStep -> onAiStep(state)
-        GameAction.BackToTitle -> Result(state.copy(screen = DicewarsScreen.Title, selectedFrom = null, selectedTo = null))
+        GameAction.BackToTitle -> Result(state.copy(screen = DicewarsScreen.Title, selectedFrom = null, selectedTo = null, confirmResetStats = false))
         GameAction.ToggleSound -> Result(state.copy(soundEnabled = !state.soundEnabled))
+        GameAction.ShowStats -> Result(state.copy(screen = DicewarsScreen.Stats, confirmResetStats = false, playerStatsHistory = playerStatsStore.load()))
+        GameAction.ResetStatsRequested -> Result(state.copy(confirmResetStats = true))
+        GameAction.ResetStatsCancelled -> Result(state.copy(confirmResetStats = false))
+        GameAction.ResetStatsConfirmed -> {
+            playerStatsStore.clear()
+            Result(state.copy(playerStatsHistory = PlayerStatsHistory.default(), confirmResetStats = false))
+        }
         GameAction.TitleTapped -> onTitleTapped(state)
         GameAction.GoToDebug -> Result(state.copy(screen = DicewarsScreen.Debug))
         is GameAction.ShowDebugScreen -> onShowDebugScreen(state, action.screen)
@@ -118,6 +145,7 @@ class GameReducer(
             random = random,
         )
         val newGame = state.game.resolveBattle(selectedFrom, territoryId, roll)
+        val newEliminatedPlayerIds = appendNewEliminations(state, newGame)
 
         val battleSounds = listOf(SoundEvent.DICE, if (roll.success) SoundEvent.SUCCESS else SoundEvent.FAIL)
 
@@ -125,7 +153,7 @@ class GameReducer(
         if (terminalScreen != null) {
             val terminalSounds = battleSounds + terminalScreen.soundEvents
             return Result(
-                state.copy(game = newGame, screen = terminalScreen, selectedFrom = null, selectedTo = null),
+                recordStatsIfNeeded(state.copy(game = newGame, screen = terminalScreen, selectedFrom = null, selectedTo = null, eliminatedPlayerIds = newEliminatedPlayerIds)),
                 terminalSounds,
             )
         }
@@ -136,6 +164,7 @@ class GameReducer(
                 screen = turnScreenFor(newGame, state.spectateMode),
                 selectedFrom = null,
                 selectedTo = null,
+                eliminatedPlayerIds = newEliminatedPlayerIds,
             ),
             battleSounds,
         )
@@ -154,6 +183,7 @@ class GameReducer(
             random = random,
         )
         val newGame = state.game.resolveBattle(move.from, move.to, roll)
+        val newEliminatedPlayerIds = appendNewEliminations(state, newGame)
 
         val battleSounds = listOf(SoundEvent.DICE, if (roll.success) SoundEvent.SUCCESS else SoundEvent.FAIL)
 
@@ -161,7 +191,7 @@ class GameReducer(
         if (terminalScreen != null) {
             val terminalSounds = battleSounds + terminalScreen.soundEvents
             return Result(
-                state.copy(game = newGame, screen = terminalScreen, selectedFrom = null, selectedTo = null),
+                recordStatsIfNeeded(state.copy(game = newGame, screen = terminalScreen, selectedFrom = null, selectedTo = null, eliminatedPlayerIds = newEliminatedPlayerIds)),
                 terminalSounds,
             )
         }
@@ -172,6 +202,7 @@ class GameReducer(
                 screen = turnScreenFor(newGame, state.spectateMode),
                 selectedFrom = null,
                 selectedTo = null,
+                eliminatedPlayerIds = newEliminatedPlayerIds,
             ),
             battleSounds,
         )
@@ -196,6 +227,31 @@ class GameReducer(
             ),
             newScreen.soundEvents,
         )
+    }
+
+    private fun appendNewEliminations(state: GameUiState, newGame: DicewarsGame): List<String> {
+        val eliminated = state.eliminatedPlayerIds.toMutableList()
+        for (p in 0 until newGame.pmax) {
+            val id = state.playerIds[p] ?: continue
+            if (id !in eliminated && state.game.players[p].maxConnectedAreaCount > 0 && newGame.players[p].maxConnectedAreaCount == 0) {
+                eliminated += id
+            }
+        }
+        return eliminated
+    }
+
+    private fun recordStatsIfNeeded(state: GameUiState): GameUiState {
+        if (state.spectateMode || state.gameStatsRecorded) return state
+        val winner = (0 until state.game.pmax).firstOrNull { state.game.players[it].maxConnectedAreaCount > 0 } ?: return state
+        val winnerId = state.playerIds[winner] ?: return state
+        val participants = (0 until state.game.pmax).mapNotNull { p ->
+            val id = state.playerIds[p] ?: return@mapNotNull null
+            val name = state.playerNames[p] ?: id
+            PlayerStatsParticipant(id, name)
+        }.distinctBy { it.playerId }
+        val history = state.playerStatsHistory.recordGameResult(participants, winnerId, state.eliminatedPlayerIds)
+        playerStatsStore.save(history)
+        return state.copy(playerStatsHistory = history, gameStatsRecorded = true)
     }
 
     private fun terminalScreenOrNull(game: DicewarsGame, spectateMode: Boolean): DicewarsScreen? {

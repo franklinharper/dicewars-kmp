@@ -561,4 +561,4 @@ Tournament v1 is complete when:
 7. plain text and CSV report formatters are tested
 8. the CLI runs from Gradle
 9. the smart wrapper skips rebuilds when unchanged and rebuilds when needed
-10. validation commands and results are recorded in `TOURNAMENT_PROGRESS.md`
+10. follow-up tournament work is recorded in `TASKS.md`

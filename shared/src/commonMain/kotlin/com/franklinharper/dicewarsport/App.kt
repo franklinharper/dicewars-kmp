@@ -16,11 +16,12 @@ fun App(
     onThemeChanged: @Composable (isDark: Boolean) -> Unit = {},
     soundPlayer: SoundPlayer = NoOpSoundPlayer(),
     debugPreferences: DebugPreferences = NoOpDebugPreferences(),
+    playerStatsStore: PlayerStatsStore = InMemoryPlayerStatsStore(),
 ) = AppTheme(onThemeChanged) {
     val random = remember { KotlinRandomSource() }
-    val reducer = remember { GameReducer(random, debugPreferences = debugPreferences) }
+    val reducer = remember { GameReducer(random, debugPreferences = debugPreferences, playerStatsStore = playerStatsStore) }
     var state by remember {
-        mutableStateOf(GameUiState(screen = DicewarsScreen.Loading, game = DicewarsGame()))
+        mutableStateOf(GameUiState(screen = DicewarsScreen.Loading, game = DicewarsGame(), playerStatsHistory = playerStatsStore.load()))
     }
 
     DicewarsApp(
@@ -48,6 +49,7 @@ fun DicewarsApp(
         DicewarsScreen.AiTurn -> GameBoardScreen(state, onAction, title = "AI turn")
         DicewarsScreen.GameOver -> GameOverScreen(state, onAction)
         DicewarsScreen.Win -> WinScreen(state, onAction)
+        DicewarsScreen.Stats -> StatsScreen(state, onAction)
         DicewarsScreen.Debug -> DebugScreen(state, onAction)
     }
 }

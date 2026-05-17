@@ -8,5 +8,6 @@ enum class DicewarsScreen(val soundEvents: List<SoundEvent> = emptyList()) {
     AiTurn,
     GameOver(soundEvents = listOf(SoundEvent.GAME_OVER)),
     Win(soundEvents = listOf(SoundEvent.WIN)),
+    Stats,
     Debug,
 }

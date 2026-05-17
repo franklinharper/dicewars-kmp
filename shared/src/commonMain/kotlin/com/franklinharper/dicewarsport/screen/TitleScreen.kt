@@ -53,6 +53,7 @@ fun TitleScreen(state: GameUiState, onAction: (GameAction) -> Unit) = ScreenScaf
         }
     }
     Button(onClick = { onAction(GameAction.StartPressed) }) { Text("Start") }
+    Button(onClick = { onAction(GameAction.ShowStats) }) { Text("Stats") }
     Spacer(Modifier.weight(1f))
     Text(
         text = "Version $APP_VERSION",

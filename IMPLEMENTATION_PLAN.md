@@ -228,14 +228,14 @@ Acceptance:
 - `dicewars-port-to-kmp/dicewars-port/` exists.
 - Generated project contains Android, iOS, Desktop, Web, and tests.
 - `IMPLEMENTATION_PLAN.md` exists.
-- `PROGRESS.md` exists.
+- `TASKS.md` exists for small follow-up changes and deferred work.
 
 ## Phase 0B - Baseline verification and tracking setup
 
 Goals:
 
 1. Verify the generated app builds before port work begins.
-2. Record baseline commands/results in `PROGRESS.md`.
+2. Record follow-up work or deferred items in `TASKS.md`.
 3. Identify generated source-set layout and exact destination paths.
 4. Add a first failing test for the 10-screen contract.
 
@@ -251,7 +251,7 @@ cd dicewars-port-to-kmp/dicewars-port
 
 Acceptance:
 
-- Baseline test/build status recorded in `PROGRESS.md`.
+- Follow-up work or deferred validation is recorded in `TASKS.md`.
 - Destination package/source paths documented.
 - `IMPLEMENTATION_PLAN.md` updated if generated source paths differ from expected paths.
 - First red test exists for the required screen count.
@@ -570,7 +570,7 @@ If iOS work is later resumed, identify and run the generated iOS validation task
 ./gradlew :shared:embedAndSignAppleFrameworkForXcode
 ```
 
-If the generated task name differs, record the actual task in `PROGRESS.md`.
+If the generated task name differs, record the actual task in `TASKS.md`.
 
 Acceptance:
 
@@ -582,22 +582,6 @@ Acceptance:
 
 ---
 
-# Progress Tracking
+# Task Tracking
 
-Progress is tracked in `PROGRESS.md` using one table row per phase.
-
-Each phase records:
-
-- status: `Not Started`, `In Progress`, `Blocked`, or `Done`
-- red test evidence
-- green implementation evidence
-- commands run
-- notes/blockers
-
-Rules:
-
-1. A phase cannot be marked `Done` without passing tests or a documented reason.
-2. Each red/green cycle should update the phase notes.
-3. Any intentional deviation from the JS source must be documented in the phase notes.
-4. The 10-screen contract must remain visible in every UI/state-machine phase.
-5. Build/test command output summaries should be recorded, not pasted in full unless needed for debugging.
+Small changes, bug fixes, and deferred work are tracked in `TASKS.md`.

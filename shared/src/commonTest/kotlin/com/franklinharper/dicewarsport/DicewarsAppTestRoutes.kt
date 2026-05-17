@@ -8,5 +8,6 @@ fun routedDicewarsScreens(): Set<DicewarsScreen> = setOf(
     DicewarsScreen.AiTurn,
     DicewarsScreen.GameOver,
     DicewarsScreen.Win,
+    DicewarsScreen.Stats,
     DicewarsScreen.Debug,
 )

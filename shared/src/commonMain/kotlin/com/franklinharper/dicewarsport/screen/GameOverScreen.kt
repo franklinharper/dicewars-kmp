@@ -22,6 +22,7 @@ fun GameOverScreen(state: GameUiState, onAction: (GameAction) -> Unit) = ScreenS
     onGoToDebug = { onAction(GameAction.GoToDebug) },
 ) {
     AnimatedRobot(modifier = Modifier.weight(1f).fillMaxWidth())
+    StatsTable(state.playerStatsHistory.sortedRecords())
     Button(
         onClick = { onAction(GameAction.BackToTitle) },
         modifier = Modifier.fillMaxWidth(),

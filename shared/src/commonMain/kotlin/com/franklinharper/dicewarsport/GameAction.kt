@@ -13,6 +13,10 @@ sealed interface GameAction {
     data object StartSpectate : GameAction
     data object ToggleSound : GameAction
     data object TitleTapped : GameAction
+    data object ShowStats : GameAction
+    data object ResetStatsRequested : GameAction
+    data object ResetStatsCancelled : GameAction
+    data object ResetStatsConfirmed : GameAction
     data object GoToDebug : GameAction
     data class ShowDebugScreen(val screen: DicewarsScreen) : GameAction
     data object DisableDebugMode : GameAction

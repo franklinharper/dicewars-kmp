@@ -22,5 +22,6 @@ fun WinScreen(state: GameUiState, onAction: (GameAction) -> Unit) = ScreenScaffo
     onGoToDebug = { onAction(GameAction.GoToDebug) },
 ) {
     AnimatedTrophy(modifier = Modifier.weight(1f).fillMaxWidth())
+    StatsTable(state.playerStatsHistory.sortedRecords())
     Button(onClick = { onAction(GameAction.BackToTitle) }) { Text("New Game") }
 }
