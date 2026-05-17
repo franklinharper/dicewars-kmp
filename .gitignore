@@ -1,0 +1,17 @@
+.idea/
+.kotlin/
+.superpowers/
+.gradle/
+build/
+dist/
+captures/
+xcuserdata/
+Pods/
+.externalNativeBuild
+.cxx
+local.properties
+*.iml
+.DS_Store
+*.jks
+*.gpg
+*yarn.lock

@@ -1,0 +1,246 @@
+package com.franklinharper.dicewarsport
+
+import com.franklinharper.dicewarsport.ai.AiStrategy
+import com.franklinharper.dicewarsport.ai.Move
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
+
+class GameUiReducerTest {
+
+    @Test
+    fun loadingTransitionsToTitle() {
+        val result = reducer().reduce(initialUiState(), GameAction.LoadingFinished)
+
+        assertEquals(DicewarsScreen.Title, result.state.screen)
+    }
+
+    @Test
+    fun titleTransitionsToMapPreview() {
+        val result = reducer().reduce(initialUiState(screen = DicewarsScreen.Title), GameAction.StartPressed)
+
+        assertEquals(DicewarsScreen.MapPreview, result.state.screen)
+    }
+
+    @Test
+    fun selectedPlayerCountIsUsedWhenGameStarts() {
+        val reducer = reducer()
+        val selected = reducer.reduce(initialUiState(screen = DicewarsScreen.Title), GameAction.SelectPlayerCount(4))
+        val started = reducer.reduce(selected.state, GameAction.StartPressed)
+
+        assertEquals(4, selected.state.selectedPlayerCount)
+        assertEquals(4, started.state.game.pmax)
+        assertEquals(DicewarsScreen.MapPreview, started.state.screen)
+        assertEquals(listOf(SoundEvent.BUTTON), selected.soundEvents)
+    }
+
+    @Test
+    fun startAssignsNamesToHumanAndAiPlayers() {
+        val reducer = reducer(aiStrategies = emptyMap())
+        val selected = reducer.reduce(initialUiState(screen = DicewarsScreen.Title), GameAction.SelectPlayerCount(4))
+        val started = reducer.reduce(selected.state, GameAction.StartPressed)
+
+        assertEquals("Human", started.state.playerNames[0])
+        assertEquals("Rebel", started.state.playerNames[1])
+        assertEquals("Rebel", started.state.playerNames[2])
+        assertEquals("Rebel", started.state.playerNames[3])
+    }
+
+    @Test
+    fun mapPreviewTransitionsToHumanOrAiTurn() {
+        val human = reducer().reduce(previewState(user = 0, currentPlayer = 0), GameAction.AcceptMap)
+        val ai = reducer().reduce(previewState(user = 0, currentPlayer = 1), GameAction.AcceptMap)
+
+        assertEquals(DicewarsScreen.HumanTurn, human.state.screen)
+        assertEquals(DicewarsScreen.AiTurn, ai.state.screen)
+        assertEquals(listOf(SoundEvent.MY_TURN), human.soundEvents)
+        assertEquals(emptyList<SoundEvent>(), ai.soundEvents)
+    }
+
+    @Test
+    fun humanTurnResolvesAttackAndStaysOnTurnAfterTwoLegalClicks() {
+        val reducer = reducer()
+        val selected = reducer.reduce(turnState(DicewarsScreen.HumanTurn), GameAction.TerritoryClicked(1))
+        val next = reducer.reduce(selected.state, GameAction.TerritoryClicked(2))
+
+        assertEquals(DicewarsScreen.HumanTurn, next.state.screen)
+        assertEquals(null, next.state.selectedFrom)
+        assertEquals(null, next.state.selectedTo)
+        assertEquals(0, next.state.game.areas[2].owner)
+        assertEquals(3, next.state.game.areas[2].dice)
+        assertEquals(1, next.state.game.areas[1].dice)
+        assertEquals(2, next.state.game.players[0].maxConnectedAreaCount)
+        assertEquals(1, next.state.game.players[1].maxConnectedAreaCount)
+        assertEquals(listOf(SoundEvent.CLICK), selected.soundEvents)
+        assertTrue(next.soundEvents.contains(SoundEvent.DICE))
+        assertTrue(next.soundEvents.contains(SoundEvent.SUCCESS))
+    }
+
+    @Test
+    fun humanTurnReceivesReinforcementsAndAdvancesToNextPlayerOnEndTurn() {
+        val result = reducer().reduce(turnState(DicewarsScreen.HumanTurn), GameAction.EndTurn)
+
+        assertEquals(DicewarsScreen.AiTurn, result.state.screen)
+        assertEquals(1, result.state.game.currentPlayer())
+        assertEquals(5, result.state.game.areas[1].dice)
+    }
+
+    @Test
+    fun aiTurnResolvesAttackOrFinishesTurnImmediately() {
+        val next = reducer(ai = FixedMoveAi(Move(2, 1))).reduce(turnState(DicewarsScreen.AiTurn, currentPlayer = 1), GameAction.AiStep)
+        val finished = reducer(ai = FixedMoveAi(null)).reduce(turnState(DicewarsScreen.AiTurn, currentPlayer = 1), GameAction.AiStep)
+
+        assertEquals(DicewarsScreen.AiTurn, next.state.screen)
+        assertEquals(DicewarsScreen.HumanTurn, finished.state.screen)
+        assertEquals(0, finished.state.game.currentPlayer())
+    }
+
+    @Test
+    fun immediateAttackResolutionTransitionsToWinOrGameOver() {
+        val gameOverGame = uiGame(areas = mapOf(
+            1 to AreaData(size = 5, owner = 0, dice = 1, adjacentAreas = adj(2)),
+            2 to AreaData(size = 5, owner = 1, dice = 8, adjacentAreas = adj(1)),
+        ), turnIndex = 1)
+        val gameOver = reducer(ai = FixedMoveAi(Move(2, 1))).reduce(
+            GameUiState(screen = DicewarsScreen.AiTurn, game = gameOverGame),
+            GameAction.AiStep,
+        )
+        assertEquals(DicewarsScreen.GameOver, gameOver.state.screen)
+        assertTrue(gameOver.soundEvents.contains(SoundEvent.GAME_OVER))
+
+        val winGame = uiGame(areas = mapOf(
+            1 to AreaData(size = 5, owner = 0, dice = 4, adjacentAreas = adj(2)),
+            2 to AreaData(size = 5, owner = 1, dice = 2, adjacentAreas = adj(1, 3)),
+            3 to AreaData(size = 5, owner = 0, dice = 1, adjacentAreas = adj(2)),
+        ))
+        val win = reducer().reduce(
+            reducer().reduce(GameUiState(screen = DicewarsScreen.HumanTurn, game = winGame), GameAction.TerritoryClicked(1)).state,
+            GameAction.TerritoryClicked(2),
+        )
+        assertEquals(DicewarsScreen.Win, win.state.screen)
+        assertTrue(win.soundEvents.contains(SoundEvent.WIN))
+    }
+
+    @Test
+    fun winAndGameOverReturnToTitle() {
+        val fromWin = reducer().reduce(initialUiState(screen = DicewarsScreen.Win), GameAction.BackToTitle)
+        val fromGameOver = reducer().reduce(initialUiState(screen = DicewarsScreen.GameOver), GameAction.BackToTitle)
+
+        assertEquals(DicewarsScreen.Title, fromWin.state.screen)
+        assertEquals(DicewarsScreen.Title, fromGameOver.state.screen)
+    }
+
+    @Test
+    fun spectateModeReusesExistingScreensAndDoesNotAddEleventhScreen() {
+        val result = reducer().reduce(initialUiState(screen = DicewarsScreen.Title), GameAction.StartSpectate)
+
+        assertTrue(result.state.spectateMode)
+        assertEquals(DicewarsScreen.MapPreview, result.state.screen)
+    }
+
+    @Test
+    fun debugModeCanBeToggledViaTitleTaps() {
+        val reducer = reducer()
+        var state = initialUiState(screen = DicewarsScreen.Title)
+        // Tap 4 times - not enough
+        repeat(4) { state = reducer.reduce(state, GameAction.TitleTapped).state }
+        assertEquals(false, state.debugMode)
+        // 5th tap enables debug mode
+        state = reducer.reduce(state, GameAction.TitleTapped).state
+        assertEquals(true, state.debugMode)
+    }
+
+    @Test
+    fun debugModeCanBeDisabled() {
+        val reducer = reducer()
+        var state = initialUiState(screen = DicewarsScreen.Title).copy(debugMode = true)
+        state = reducer.reduce(state, GameAction.DisableDebugMode).state
+        assertEquals(false, state.debugMode)
+        assertEquals(DicewarsScreen.Title, state.screen)
+    }
+
+    @Test
+    fun showDebugScreenNavigatesToWinScreen() {
+        val result = reducer().reduce(
+            initialUiState(screen = DicewarsScreen.Debug),
+            GameAction.ShowDebugScreen(DicewarsScreen.Win),
+        )
+        assertEquals(DicewarsScreen.Win, result.state.screen)
+        assertEquals(listOf(SoundEvent.WIN), result.soundEvents)
+    }
+
+    @Test
+    fun showDebugScreenGeneratesGameForHumanTurn() {
+        val result = reducer().reduce(
+            initialUiState(screen = DicewarsScreen.Debug),
+            GameAction.ShowDebugScreen(DicewarsScreen.HumanTurn),
+        )
+        assertEquals(DicewarsScreen.HumanTurn, result.state.screen)
+        // Game should have been generated (non-default areas exist)
+        assertTrue(result.state.game.areas.any { it.size > 0 })
+    }
+}
+
+private fun adj(vararg ids: Int): List<Int> {
+    val list = MutableList(DicewarsGame.AREA_MAX) { 0 }
+    for (id in ids) if (id in list.indices) list[id] = 1
+    return list
+}
+
+private fun reducer(
+    ai: AiStrategy = FixedMoveAi(null),
+    aiStrategies: Map<Int, AiStrategy> = mapOf(1 to ai),
+): GameReducer = GameReducer(
+    random = UiFixedRandom(),
+    aiStrategies = aiStrategies,
+    debugPreferences = object : DebugPreferences {
+        private var mode = false
+        override fun isDebugMode(): Boolean = mode
+        override fun setDebugMode(enabled: Boolean) { mode = enabled }
+    },
+)
+
+private fun initialUiState(screen: DicewarsScreen = DicewarsScreen.Loading): GameUiState = GameUiState(
+    screen = screen,
+    game = uiGame(),
+)
+
+private fun previewState(user: Int, currentPlayer: Int): GameUiState {
+    val game = uiGame().copy(user = user, turnOrder = listOf(currentPlayer, 1, 2, 3, 4, 5, 6, 7).take(8))
+    return GameUiState(screen = DicewarsScreen.MapPreview, game = game)
+}
+
+private fun turnState(screen: DicewarsScreen, currentPlayer: Int = 0): GameUiState {
+    val game = uiGame().copy(turnIndex = currentPlayer)
+    return GameUiState(screen = screen, game = game)
+}
+
+private fun uiGame(
+    areas: Map<Int, AreaData> = mapOf(
+        1 to AreaData(size = 5, owner = 0, dice = 4, adjacentAreas = adj(2)),
+        2 to AreaData(size = 5, owner = 1, dice = 2, adjacentAreas = adj(1, 3)),
+        3 to AreaData(size = 5, owner = 1, dice = 1, adjacentAreas = adj(2)),
+    ),
+    turnIndex: Int = 0,
+): DicewarsGame {
+    val game = DicewarsGame(
+        pmax = 2,
+        user = 0,
+        turnOrder = listOf(0, 1, 2, 3, 4, 5, 6, 7),
+        turnIndex = turnIndex,
+        areas = List(DicewarsGame.AREA_MAX) { i -> areas[i] ?: AreaData() },
+    )
+    return game.setAreaTc(0).setAreaTc(1)
+}
+
+private class FixedMoveAi(private val move: Move?) : AiStrategy {
+    override fun chooseMove(game: DicewarsGame): Move? = move
+}
+
+private class UiFixedRandom : RandomSource {
+    override fun nextInt(bound: Int): Int {
+        require(bound > 0)
+        return 0
+    }
+}
