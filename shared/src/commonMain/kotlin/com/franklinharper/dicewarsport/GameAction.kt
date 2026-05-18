@@ -9,11 +9,15 @@ sealed interface GameAction {
     data class TerritoryClicked(val territoryId: Int) : GameAction
     data object EndTurn : GameAction
     data object AiStep : GameAction
-    data object BackToTitle : GameAction
+    data object HumanAutoplayStep : GameAction
+    data object ToggleHumanAutoplay : GameAction
+    sealed interface BackNavigation : GameAction
+    data object BackToTitle : BackNavigation
     data object StartSpectate : GameAction
     data object ToggleSound : GameAction
     data object TitleTapped : GameAction
     data object ShowStats : GameAction
+    data object BackFromStats : BackNavigation
     data object ResetStatsRequested : GameAction
     data object ResetStatsCancelled : GameAction
     data object ResetStatsConfirmed : GameAction

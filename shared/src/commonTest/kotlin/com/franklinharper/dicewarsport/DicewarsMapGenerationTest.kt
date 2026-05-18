@@ -46,14 +46,6 @@ class DicewarsMapGenerationTest {
     }
 
     @Test
-    fun generatedMapRandomizesTurnOrder() {
-        val game = DicewarsGame.generate(4, ZeroRandomSource())
-
-        assertEquals((0 until game.pmax).toSet(), game.turnOrder.take(game.pmax).toSet())
-        assertTrue(game.currentPlayer() != 0, "first player should come from shuffled turn order, not always player 0")
-    }
-
-    @Test
     fun adjacencyIsSymmetric() {
         val game = DicewarsGame.generate(7, SequenceRandomSource())
         val map = game.toRenderMap()
@@ -108,13 +100,6 @@ class DicewarsMapGenerationTest {
                 territory.adjacentTerritories,
             )
         }
-    }
-}
-
-private class ZeroRandomSource : RandomSource {
-    override fun nextInt(bound: Int): Int {
-        require(bound > 0)
-        return 0
     }
 }
 

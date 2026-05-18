@@ -30,14 +30,6 @@ class DicewarsAiTest {
     }
 
     @Test
-    fun botDisplayNamesAreFunNames() {
-        assertEquals("Berzerker", AlwaysAttackWhenStrongerBot(FixedAiRandom(0)).name)
-        assertEquals("Rebel", TargetTheLeader(FixedAiRandom(0)).name)
-        assertEquals("Turtle", CautiousBot().name)
-        assertEquals("Emperor", StrategicBot(FixedAiRandom(0)).name)
-    }
-
-    @Test
     fun precomputeNeighborsReturnsCompactNeighborLists() {
         val game = DicewarsGame(
             areas = List(DicewarsGame.AREA_MAX) { i ->

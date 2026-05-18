@@ -8,13 +8,14 @@ data class PlayerStatsRecord(
     val score: Int = 0,
 ) {
     val winRatioPercent: Int get() = if (gamesPlayed == 0) 0 else (wins * 100) / gamesPlayed
+    val averageScore: Double get() = if (gamesPlayed == 0) 0.0 else score.toDouble() / gamesPlayed
 }
 
 data class PlayerStatsHistory(
     val records: Map<String, PlayerStatsRecord> = emptyMap(),
 ) {
     fun sortedRecords(): List<PlayerStatsRecord> = records.values.sortedWith(
-        compareByDescending<PlayerStatsRecord> { it.score }
+        compareByDescending<PlayerStatsRecord> { it.averageScore }
             .thenByDescending { it.winRatioPercent }
             .thenBy { it.displayName }
     )

@@ -10,6 +10,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
+import kotlin.math.roundToInt
 import com.franklinharper.dicewarsport.GameAction
 import com.franklinharper.dicewarsport.GameUiState
 import com.franklinharper.dicewarsport.PlayerStatsRecord
@@ -22,7 +23,7 @@ fun StatsScreen(state: GameUiState, onAction: (GameAction) -> Unit) = ScreenScaf
     showSoundToggle = true,
     soundEnabled = state.soundEnabled,
     showDebugIcon = state.debugMode,
-    onBack = { onAction(GameAction.BackToTitle) },
+    onBack = { onAction(GameAction.BackFromStats) },
     onToggleSound = { onAction(GameAction.ToggleSound) },
     onGoToDebug = { onAction(GameAction.GoToDebug) },
 ) {
@@ -51,7 +52,7 @@ fun StatsScreen(state: GameUiState, onAction: (GameAction) -> Unit) = ScreenScaf
 fun StatsTable(records: List<PlayerStatsRecord>) {
     StatsRow(
         player = "Player",
-        score = "Score",
+        score = "Avg Score",
         winPercent = "Win %",
         wins = "Wins",
         played = "Played",
@@ -63,12 +64,17 @@ fun StatsTable(records: List<PlayerStatsRecord>) {
     records.forEach { record ->
         StatsRow(
             player = record.displayName,
-            score = record.score.toString(),
+            score = record.averageScore.formatTwoDecimals(),
             winPercent = "${record.winRatioPercent}%",
             wins = record.wins.toString(),
             played = record.gamesPlayed.toString(),
         )
     }
+}
+
+private fun Double.formatTwoDecimals(): String {
+    val scaled = (this * 100).roundToInt()
+    return "${scaled / 100}.${(scaled % 100).toString().padStart(2, '0')}"
 }
 
 @Composable

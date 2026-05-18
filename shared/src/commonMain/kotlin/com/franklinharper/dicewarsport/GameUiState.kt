@@ -18,4 +18,7 @@ data class GameUiState(
     val eliminatedPlayerSeats: List<Int> = emptyList(),
     val gameStatsRecorded: Boolean = false,
     val confirmResetStats: Boolean = false,
+    val statsReturnScreen: DicewarsScreen = DicewarsScreen.Title,
+    val humanAutoplayEnabled: Boolean = false,
+    val resolvingAfterHumanEliminated: Boolean = false,
 )

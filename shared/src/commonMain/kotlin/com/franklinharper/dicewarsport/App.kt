@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.ui.tooling.preview.Preview
 import com.franklinharper.dicewarsport.presentation.components.ScreenScaffold
 import com.franklinharper.dicewarsport.screen.*
@@ -17,22 +18,40 @@ fun App(
     soundPlayer: SoundPlayer = NoOpSoundPlayer(),
     debugPreferences: DebugPreferences = NoOpDebugPreferences(),
     playerStatsStore: PlayerStatsStore = InMemoryPlayerStatsStore(),
+    backGestureHandler: @Composable (enabled: Boolean, onBack: () -> Unit) -> Unit = { _, _ -> },
 ) = AppTheme(onThemeChanged) {
     val random = remember { KotlinRandomSource() }
     val reducer = remember { GameReducer(random, debugPreferences = debugPreferences, playerStatsStore = playerStatsStore) }
     var state by remember {
         mutableStateOf(GameUiState(screen = DicewarsScreen.Loading, game = DicewarsGame(), playerStatsHistory = playerStatsStore.load()))
     }
+    val screenBackStack = remember { mutableStateListOf<DicewarsScreen>() }
+
+    val dispatchAction: (GameAction) -> Unit = { action ->
+        val oldScreen = state.screen
+        val result = reducer.reduce(state, action)
+        val newScreen = result.state.screen
+        if (oldScreen != newScreen && action !is GameAction.BackNavigation) {
+            screenBackStack += oldScreen
+        }
+        state = result.state
+        if (state.soundEnabled) {
+            result.soundEvents.forEach { soundPlayer.play(it) }
+        }
+    }
+
+    backGestureHandler(
+        state.screen != DicewarsScreen.Loading &&
+            state.screen != DicewarsScreen.Title &&
+            screenBackStack.isNotEmpty(),
+    ) {
+        val previousScreen = screenBackStack.removeAt(screenBackStack.lastIndex)
+        state = state.copy(screen = previousScreen, confirmResetStats = false)
+    }
 
     DicewarsApp(
         state = state,
-        onAction = { action ->
-            val result = reducer.reduce(state, action)
-            state = result.state
-            if (state.soundEnabled) {
-                result.soundEvents.forEach { soundPlayer.play(it) }
-            }
-        },
+        onAction = dispatchAction,
     )
 }
 

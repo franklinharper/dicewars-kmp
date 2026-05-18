@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -43,15 +44,22 @@ fun GameBoardScreen(state: GameUiState, onAction: (GameAction) -> Unit, title: S
     onBack = { onAction(GameAction.BackToTitle) },
     onToggleSound = { onAction(GameAction.ToggleSound) },
     onGoToDebug = { onAction(GameAction.GoToDebug) },
+    horizontalPadding = 8.dp,
 ) {
     Board(state, onAction)
     PlayerStatusBar(state)
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
     ) {
         if (state.screen == DicewarsScreen.HumanTurn) {
+            if (state.humanAutoplayEnabled) {
+                LaunchedEffect(state.game) {
+                    delay(300)
+                    onAction(GameAction.HumanAutoplayStep)
+                }
+            }
             Text(
                 text = "1. Click your area.\n2. Click neighbor to attack.",
                 style = MaterialTheme.typography.bodyMedium,
@@ -72,6 +80,13 @@ fun GameBoardScreen(state: GameUiState, onAction: (GameAction) -> Unit, title: S
             Spacer(Modifier.size(8.dp))
             Text("bot's turn")
         }
+    }
+    Spacer(Modifier.weight(1f))
+    Button(
+        onClick = { onAction(GameAction.ToggleHumanAutoplay) },
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text(if (state.humanAutoplayEnabled) "Turn Autoplay off" else "Turn Autoplay on")
     }
 }
 
@@ -140,15 +155,13 @@ internal fun ColumnScope.Board(state: GameUiState, onAction: (GameAction) -> Uni
     val map = remember(state.game) { state.game.toRenderMap() }
     val density = LocalDensity.current
 
+    val mapAspectRatio = (HexGrid.GRID_WIDTH + 0.5f) / (HexGrid.GRID_HEIGHT * 2f / 3f)
     BoxWithConstraints(
-        modifier = Modifier.fillMaxWidth().weight(1f),
+        modifier = Modifier.fillMaxWidth().aspectRatio(mapAspectRatio),
         contentAlignment = Alignment.Center,
     ) {
         val availableWidthPx = constraints.maxWidth.toFloat()
-        val availableHeightPx = constraints.maxHeight.toFloat()
-        val cellWidthFromWidth = availableWidthPx / (HexGrid.GRID_WIDTH + 0.5f)
-        val cellWidthFromHeight = availableHeightPx / HexGrid.GRID_HEIGHT
-        val cellWidth = minOf(cellWidthFromWidth, cellWidthFromHeight)
+        val cellWidth = availableWidthPx / (HexGrid.GRID_WIDTH + 0.5f)
         val cellHeight = cellWidth * 2f / 3f
         val fontSize = with(density) { (cellWidth * 0.8f).toSp() }.value.coerceIn(6f, 18f)
 

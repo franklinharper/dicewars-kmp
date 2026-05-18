@@ -40,6 +40,7 @@ fun ScreenScaffold(
     onToggleSound: (() -> Unit)? = null,
     onGoToDebug: (() -> Unit)? = null,
     onTitleTap: (() -> Unit)? = null,
+    horizontalPadding: androidx.compose.ui.unit.Dp = 16.dp,
     content: ColumnScopeContent,
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -47,7 +48,7 @@ fun ScreenScaffold(
             modifier = Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.systemBars)
-                .padding(16.dp),
+                .padding(horizontal = horizontalPadding, vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {

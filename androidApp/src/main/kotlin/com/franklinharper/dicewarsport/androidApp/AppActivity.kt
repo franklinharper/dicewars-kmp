@@ -3,6 +3,7 @@ package com.franklinharper.dicewarsport.androidApp
 import android.app.Activity
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
@@ -29,6 +30,7 @@ class AppActivity : ComponentActivity() {
                 soundPlayer = player,
                 debugPreferences = debugPrefs,
                 playerStatsStore = statsStore,
+                backGestureHandler = { enabled, onBack -> BackHandler(enabled = enabled, onBack = onBack) },
             )
         }
     }
