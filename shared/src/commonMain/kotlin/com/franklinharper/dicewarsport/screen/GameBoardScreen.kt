@@ -16,7 +16,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -44,14 +47,29 @@ fun GameBoardScreen(state: GameUiState, onAction: (GameAction) -> Unit, title: S
     onBack = { onAction(GameAction.BackToTitle) },
     onToggleSound = { onAction(GameAction.ToggleSound) },
     onGoToDebug = { onAction(GameAction.GoToDebug) },
-    horizontalPadding = 8.dp,
+    horizontalPadding = 16.dp,
 ) {
+    if (state.resolvingAfterHumanEliminated) {
+        LaunchedEffect(Unit) { onAction(GameAction.FinishMatchAfterHumanEliminated) }
+        AlertDialog(
+            onDismissRequest = {},
+            confirmButton = {},
+            title = { Text("finishing the match") },
+            text = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                ) { CircularProgressIndicator() }
+            },
+        )
+    }
     Board(state, onAction)
     PlayerStatusBar(state)
+    Spacer(Modifier.height(24.dp))
     Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         if (state.screen == DicewarsScreen.HumanTurn) {
             if (state.humanAutoplayEnabled) {
@@ -62,14 +80,23 @@ fun GameBoardScreen(state: GameUiState, onAction: (GameAction) -> Unit, title: S
             }
             Text(
                 text = "1. Click your area.\n2. Click neighbor to attack.",
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.titleMedium,
+                textAlign = TextAlign.Start,
             )
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(16.dp))
+            Text(
+                text = "OR",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(Modifier.width(16.dp))
             Button(onClick = { onAction(GameAction.EndTurn) }) { Text("End turn") }
         } else {
-            LaunchedEffect(state.game) {
-                delay(300)
-                onAction(GameAction.AiStep)
+            if (!state.resolvingAfterHumanEliminated) {
+                LaunchedEffect(state.game) {
+                    delay(300)
+                    onAction(GameAction.AiStep)
+                }
             }
             Box(
                 modifier = Modifier
@@ -124,10 +151,7 @@ private fun PlayerStatusBar(state: GameUiState) {
                     modifier = Modifier
                         .size(10.dp)
                         .clip(CircleShape)
-                        .background(
-                            if (isEliminated) MaterialTheme.colorScheme.outlineVariant
-                            else GameColors.getPlayerColor(player)
-                        ),
+                        .background(GameColors.getPlayerColor(player)),
                 )
                 Spacer(Modifier.size(6.dp))
                 Text(

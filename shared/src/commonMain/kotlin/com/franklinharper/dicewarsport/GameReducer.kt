@@ -105,6 +105,7 @@ class GameReducer(
         is GameAction.TerritoryClicked -> onTerritoryClicked(state, action.territoryId)
         GameAction.EndTurn -> onTurnFinished(state)
         GameAction.AiStep -> onAiStep(state)
+        GameAction.FinishMatchAfterHumanEliminated -> finishMatchAfterHumanEliminated(state)
         GameAction.HumanAutoplayStep -> onHumanAutoplayStep(state)
         GameAction.ToggleHumanAutoplay -> Result(state.copy(humanAutoplayEnabled = !state.humanAutoplayEnabled), listOf(SoundEvent.BUTTON))
         GameAction.BackToTitle -> Result(state.copy(screen = DicewarsScreen.Title, selectedFrom = null, selectedTo = null, confirmResetStats = false))
@@ -277,6 +278,50 @@ class GameReducer(
             ),
             battleSounds,
         )
+    }
+
+    private fun finishMatchAfterHumanEliminated(state: GameUiState): Result {
+        if (!state.resolvingAfterHumanEliminated) return Result(state)
+        var current = state
+        var guard = 0
+        while (terminalScreenOrNull(current.game, current.spectateMode) == null && guard < 100_000) {
+            val player = current.game.currentPlayer()
+            val strategy = activeAiStrategies[player] ?: aiStrategies[player] ?: TargetTheLeader(random)
+            val move = strategy.chooseMove(current.game)
+            current = if (move != null && current.game.isLegalAttack(move.from, move.to, player)) {
+                val roll = rollBattle(
+                    attackerDiceCount = current.game.areas[move.from].dice,
+                    defenderDiceCount = current.game.areas[move.to].dice,
+                    random = random,
+                )
+                val newGame = current.game.resolveBattle(move.from, move.to, roll)
+                val newEliminations = appendNewEliminations(current, newGame)
+                current.copy(
+                    game = newGame,
+                    selectedFrom = null,
+                    selectedTo = null,
+                    eliminatedPlayerIds = newEliminations.playerIds,
+                    eliminatedPlayerSeats = newEliminations.seatIds,
+                )
+            } else {
+                finishTurnWithoutSounds(current)
+            }
+            guard++
+        }
+        val terminalScreen = terminalScreenOrNull(current.game, current.spectateMode) ?: DicewarsScreen.GameOver
+        return Result(recordStatsIfNeeded(current.copy(screen = terminalScreen, resolvingAfterHumanEliminated = false)))
+    }
+
+    private fun finishTurnWithoutSounds(state: GameUiState): GameUiState {
+        val player = state.game.currentPlayer()
+        var game = state.game.startSupply(player)
+        while (true) {
+            val (newGame, areaNumber) = game.supplyOneDie(player, random)
+            game = newGame
+            if (areaNumber == null) break
+        }
+        game = game.nextPlayer()
+        return state.copy(game = game, screen = turnScreenFor(game, state.spectateMode), selectedFrom = null, selectedTo = null)
     }
 
     private fun onTurnFinished(state: GameUiState): Result {

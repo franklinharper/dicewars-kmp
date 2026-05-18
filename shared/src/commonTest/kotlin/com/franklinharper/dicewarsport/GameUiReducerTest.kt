@@ -149,6 +149,35 @@ class GameUiReducerTest {
     }
 
     @Test
+    fun finishMatchAfterHumanEliminatedRecordsActualWinnerWithoutSounds() {
+        val game = uiGame(
+            areas = mapOf(
+                1 to AreaData(size = 0, owner = 0, dice = 0, adjacentAreas = adj(2)),
+                2 to AreaData(size = 5, owner = 1, dice = 8, adjacentAreas = adj(1, 3)),
+                3 to AreaData(size = 5, owner = 2, dice = 7, adjacentAreas = adj(2)),
+            ),
+            playerCount = 3,
+            turnIndex = 1,
+        )
+        val state = GameUiState(
+            screen = DicewarsScreen.AiTurn,
+            game = game,
+            resolvingAfterHumanEliminated = true,
+            eliminatedPlayerSeats = listOf(0),
+            playerIds = mapOf(0 to "human", 1 to "target-leader", 2 to "cautious"),
+            playerNames = mapOf(0 to "Human", 1 to "Rebel", 2 to "Turtle"),
+        )
+
+        val result = reducer(aiStrategies = mapOf(1 to FixedMoveAi(Move(2, 3)))).reduce(state, GameAction.FinishMatchAfterHumanEliminated)
+
+        assertEquals(DicewarsScreen.GameOver, result.state.screen)
+        assertEquals(false, result.state.resolvingAfterHumanEliminated)
+        assertTrue(result.state.gameStatsRecorded)
+        assertEquals(emptyList(), result.soundEvents)
+        assertEquals(1, result.state.playerStatsHistory.records.getValue("target-leader").wins)
+    }
+
+    @Test
     fun humanAutoplayTogglesAndResetsForNewGame() {
         val reducer = reducer()
         val enabled = reducer.reduce(turnState(DicewarsScreen.HumanTurn), GameAction.ToggleHumanAutoplay)
