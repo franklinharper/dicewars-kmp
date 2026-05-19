@@ -32,7 +32,7 @@ Recommendation: Remove, or replace with a real routing smoke test if Compose UI 
 
 File: `shared/src/commonTest/kotlin/com/franklinharper/dicewarsport/DicewarsAiTest.kt`
 
-Issue: Locks exact copy/display names (`Berzerker`, `Rebel`, `Turtle`, `Emperor`). These names are user-visible, so some coverage is useful, but this test can be brittle if naming is product copy rather than logic.
+Issue: Locks exact copy/display names (`Bully`, `Rebel`, `Turtle`, `Emperor`). These names are user-visible, so some coverage is useful, but this test can be brittle if naming is product copy rather than logic.
 
 Recommendation: Keep only if these names are a contract. Otherwise move expected names to a central registry and test consistency between game UI names, stats names, and tournament names rather than hardcoding strings in multiple places.
 

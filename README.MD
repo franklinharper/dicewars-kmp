@@ -23,7 +23,7 @@ Available bot IDs:
 
 - `target-leader` — Rebel
 - `cautious` — Turtle
-- `attack-when-stronger` — Berzerker
+- `attack-when-stronger` — Bully
 - `strategic` — Emperor
 - `frontier-commander` — Frontier Commander
 - `max` — Max
@@ -37,7 +37,10 @@ Useful options:
 # Write a report to a file
 ./scripts/run-tournament --bots target-leader,cautious,max --rounds 100 --out build/tournament.txt
 
-# Run rounds concurrently
+# Run rounds concurrently. By default this uses CPU count minus 1.
+./scripts/run-tournament --bots target-leader,cautious,max --rounds 1000
+
+# Override parallelism explicitly
 ./scripts/run-tournament --bots target-leader,cautious,max --rounds 1000 --parallel 4
 
 # Capture action logs for failed rounds

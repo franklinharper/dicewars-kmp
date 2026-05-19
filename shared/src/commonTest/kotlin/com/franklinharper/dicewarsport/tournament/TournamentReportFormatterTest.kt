@@ -14,7 +14,9 @@ class TournamentReportFormatterTest {
         assertContains(text, "Rounds completed: 1")
         assertContains(text, "Rounds failed: 1")
         assertContains(text, "Seed: 42")
-        assertContains(text, "Bot A  4 pts  1 wins")
+        assertContains(text, "Parallel processes: 3")
+        assertContains(text, "Duration: 1s 234ms")
+        assertContains(text, "Bot A  1,234 pts  5,678 wins")
         assertContains(text, "Failed rounds:")
         assertContains(text, "Round 2: maxActionsPerRound=3 exceeded")
         assertContains(text, "Round seed: 222")
@@ -31,25 +33,37 @@ class TournamentReportFormatterTest {
     }
 
     @Test
+    fun plainTextHidesFailedRoundDetailsWhenDebugIsOff() {
+        val text = PlainTextTournamentReportFormatter.format(sampleTournamentResult(debug = false))
+
+        assertContains(text, "Rounds failed: 1")
+        assertTrue(!text.contains("Failed rounds:"), text)
+        assertTrue(!text.contains("./scripts/replay-round"), text)
+    }
+
+    @Test
     fun csvIncludesStableHeaderScoreRowsAndRoundRows() {
         val csv = CsvTournamentReportFormatter.format(sampleTournamentResult())
         val lines = csv.trim().lines()
 
-        assertTrue(lines.first().startsWith("section,tournament_seed,round_seed,seats,max_actions,action_log_entries,rank,bot_id,bot_name,score,wins,round,completed,winner,actions_taken,failure_reason"))
-        assertContains(csv, "score,42,,,,,1,a,Bot A,4,1,,,,,")
-        assertContains(csv, "score,42,,,,,2,b,Bot B,0,0,,,,,")
-        assertContains(csv, "round,42,111,\"a,b\",3,0,,,,,,1,true,a,1,")
-        assertContains(csv, "round,42,222,\"b,a\",3,1,,,,,,2,false,,3,maxActionsPerRound=3 exceeded")
+        assertTrue(lines.first().startsWith("section,tournament_seed,parallel_processes,duration_ms,round_seed,seats,max_actions,action_log_entries,rank,bot_id,bot_name,score,wins,round,completed,winner,actions_taken,failure_reason"))
+        assertContains(csv, "score,42,3,1234,,,,,1,a,Bot A,1234,5678,,,,,")
+        assertContains(csv, "score,42,3,1234,,,,,2,b,Bot B,0,0,,,,,")
+        assertContains(csv, "round,42,3,1234,111,\"a,b\",3,0,,,,,,1,true,a,1,")
+        assertContains(csv, "round,42,3,1234,222,\"b,a\",3,1,,,,,,2,false,,3,maxActionsPerRound=3 exceeded")
     }
 }
 
-private fun sampleTournamentResult(): TournamentResult = TournamentResult(
+private fun sampleTournamentResult(debug: Boolean = true): TournamentResult = TournamentResult(
     roundsRequested = 2,
     roundsCompleted = 1,
     roundsFailed = 1,
     seed = 42,
+    parallelism = 3,
+    debug = debug,
+    durationMillis = 1234,
     botScores = listOf(
-        BotScore(participantId = "a", displayName = "Bot A", score = 4, wins = 1),
+        BotScore(participantId = "a", displayName = "Bot A", score = 1234, wins = 5678),
         BotScore(participantId = "b", displayName = "Bot B", score = 0, wins = 0),
     ),
     roundResults = listOf(

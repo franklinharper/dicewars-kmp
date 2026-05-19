@@ -39,6 +39,9 @@ data class TournamentResult(
     val roundsCompleted: Int,
     val roundsFailed: Int,
     val seed: Int?,
+    val parallelism: Int = 1,
+    val debug: Boolean = false,
+    val durationMillis: Long = 0,
     val botScores: List<BotScore>,
     val roundResults: List<RoundResult>,
 )

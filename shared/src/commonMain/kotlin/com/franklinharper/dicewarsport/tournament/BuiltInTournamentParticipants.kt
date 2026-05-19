@@ -10,7 +10,7 @@ import com.franklinharper.dicewarsport.ai.TargetTheLeader
 object BuiltInTournamentParticipants {
     val attackWhenStronger = TournamentParticipant(
         id = "attack-when-stronger",
-        displayName = "Berzerker",
+        displayName = "Bully",
         aiFactory = { random -> AlwaysAttackWhenStrongerBot(random) },
     )
 

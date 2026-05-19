@@ -71,7 +71,8 @@ fun runTournamentCli(
         return 2
     }
 
-    val result = if (options.parallel != null && options.parallel > 1) {
+    val parallelism = options.parallel
+    val result = if (parallelism > 1) {
         ParallelTournamentRunner().run(
             TournamentConfig(
                 participants = participants,
@@ -81,7 +82,7 @@ fun runTournamentCli(
                 logFailedRounds = options.logFailedRounds,
                 logAllRounds = options.logAllRounds,
             ),
-            parallelism = options.parallel,
+            parallelism = parallelism,
         )
     } else {
         TournamentRunner().run(
@@ -95,7 +96,7 @@ fun runTournamentCli(
             ),
         )
     }
-    val report = formatter.format(result)
+    val report = formatter.format(result.copy(debug = options.debug))
 
     if (options.outPath == null) {
         stdout(report)
@@ -116,9 +117,10 @@ data class CliOptions(
     val format: String,
     val outPath: String?,
     val maxActions: Int,
-    val parallel: Int?,
+    val parallel: Int,
     val logFailedRounds: Boolean = false,
     val logAllRounds: Boolean = false,
+    val debug: Boolean = false,
     val help: Boolean = false,
 ) {
     companion object {
@@ -131,7 +133,8 @@ data class CliOptions(
                     format = "text",
                     outPath = null,
                     maxActions = 100_000,
-                    parallel = null,
+                    parallel = defaultParallelism(),
+                    debug = false,
                     help = true,
                 )
             }
@@ -153,7 +156,8 @@ data class CliOptions(
 
             val parallel = values["parallel"]?.toIntOrNull()
                 ?: values["parallel"]?.let { throw IllegalArgumentException("--parallel must be an integer") }
-            if (parallel != null) require(parallel > 0) { "--parallel must be greater than zero" }
+                ?: defaultParallelism()
+            require(parallel > 0) { "--parallel must be greater than zero" }
 
             val seed = values["seed"]?.toIntOrNull()
                 ?: values["seed"]?.let { throw IllegalArgumentException("--seed must be an integer") }
@@ -168,8 +172,11 @@ data class CliOptions(
                 parallel = parallel,
                 logFailedRounds = values["log-failed-rounds"] == "true",
                 logAllRounds = values["log-all-rounds"] == "true",
+                debug = values["debug"] == "true",
             )
         }
+
+        private fun defaultParallelism(): Int = maxOf(1, Runtime.getRuntime().availableProcessors() - 1)
 
         private fun parseKeyValues(args: Array<String>): Map<String, String> {
             val values = mutableMapOf<String, String>()
@@ -178,7 +185,7 @@ data class CliOptions(
                 val arg = args[index]
                 require(arg.startsWith("--")) { "Unexpected argument '$arg'" }
                 val body = arg.removePrefix("--")
-                if (body in setOf("log-failed-rounds", "log-all-rounds")) {
+                if (body in setOf("log-failed-rounds", "log-all-rounds", "debug")) {
                     values[body] = "true"
                     index++
                 } else if ('=' in body) {
@@ -326,6 +333,7 @@ class ParallelTournamentRunner(
     private val roundRunner: RoundRunner = BotGameRunner(),
 ) {
     fun run(config: TournamentConfig, parallelism: Int): TournamentResult {
+        val startedAt = kotlin.time.TimeSource.Monotonic.markNow()
         val effectiveSeed = config.seed ?: java.util.Random().nextInt()
         val executor = Executors.newFixedThreadPool(parallelism)
 
@@ -362,6 +370,8 @@ class ParallelTournamentRunner(
                 roundsCompleted = roundResults.count { it.completed },
                 roundsFailed = roundResults.count { !it.completed },
                 seed = effectiveSeed,
+                parallelism = parallelism,
+                durationMillis = startedAt.elapsedNow().inWholeMilliseconds,
                 botScores = aggregateBotScores(config.participants, roundResults),
                 roundResults = roundResults,
             )
@@ -393,9 +403,10 @@ Options:
   --format <text|csv>   Output format. Default: text.
   --out <path>          Optional output path. Defaults to stdout.
   --max-actions <int>   Max actions per round. Default: 100000.
-  --parallel <int>      Number of rounds to run concurrently. Default: 1 (sequential).
+  --parallel <int>      Number of rounds to run concurrently. Default: CPU count minus 1, minimum 1.
   --log-failed-rounds   Capture action logs for failed rounds by rerunning failed rounds with the same round seed.
   --log-all-rounds      Capture action logs for every round.
+  --debug               Include debug details such as failed-round repro information in reports.
   --help, -h            Show this help.
 
 Replay:

@@ -4,7 +4,7 @@ import com.franklinharper.dicewarsport.DicewarsGame
 import com.franklinharper.dicewarsport.RandomSource
 
 class AlwaysAttackWhenStrongerBot(private val random: RandomSource) : AiStrategy {
-    override val name = "Berzerker"
+    override val name = "Bully"
 
     override fun chooseMove(game: DicewarsGame): Move? {
         val player = game.currentPlayer()

@@ -26,6 +26,7 @@ class CliOptionsTest {
         assertEquals("csv", options.format)
         assertEquals("reports/out.csv", options.outPath)
         assertEquals(1234, options.maxActions)
+        assertEquals(maxOf(1, Runtime.getRuntime().availableProcessors() - 1), options.parallel)
     }
 
     @Test
@@ -35,6 +36,7 @@ class CliOptionsTest {
         assertEquals(listOf("target-leader", "cautious"), options.botIds)
         assertEquals(3, options.rounds)
         assertEquals("text", options.format)
+        assertEquals(maxOf(1, Runtime.getRuntime().availableProcessors() - 1), options.parallel)
     }
 
     @Test
@@ -73,6 +75,54 @@ class CliOptionsTest {
 
         assertTrue(failedOnly.logFailedRounds)
         assertTrue(allRounds.logAllRounds)
+    }
+
+    @Test
+    fun cliReportsParallelProcessCount() {
+        val stdout = StringBuilder()
+        val exitCode = runTournamentCli(
+            args = arrayOf(
+                "--bots", "target-leader,cautious",
+                "--rounds", "1",
+                "--seed", "1",
+                "--max-actions", "1",
+                "--parallel", "2",
+                "--format", "text",
+            ),
+            stdout = { stdout.append(it) },
+            stderr = {},
+        )
+
+        assertEquals(0, exitCode)
+        assertContains(stdout.toString(), "Parallel processes: 2")
+    }
+
+    @Test
+    fun parsesDebugFlag() {
+        val options = CliOptions.parse(arrayOf("--bots", "target-leader,cautious", "--rounds", "1", "--debug"))
+
+        assertTrue(options.debug)
+    }
+
+    @Test
+    fun cliHidesFailedRoundDetailsUnlessDebugIsEnabled() {
+        val stdout = StringBuilder()
+        val exitCode = runTournamentCli(
+            args = arrayOf(
+                "--bots", "target-leader,cautious",
+                "--rounds", "1",
+                "--seed", "1",
+                "--max-actions", "1",
+                "--parallel", "1",
+                "--format", "text",
+            ),
+            stdout = { stdout.append(it) },
+            stderr = {},
+        )
+
+        assertEquals(0, exitCode)
+        assertContains(stdout.toString(), "Rounds failed:")
+        assertTrue(!stdout.toString().contains("Failed rounds:"), stdout.toString())
     }
 
     @Test

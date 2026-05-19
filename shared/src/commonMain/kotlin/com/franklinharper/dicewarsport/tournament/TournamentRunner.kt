@@ -6,6 +6,7 @@ class TournamentRunner(
     private val roundRunner: RoundRunner = BotGameRunner(),
 ) {
     fun run(config: TournamentConfig): TournamentResult {
+        val startedAt = kotlin.time.TimeSource.Monotonic.markNow()
         val effectiveSeed = config.seed ?: Random.Default.nextInt()
         val roundResults = mutableListOf<RoundResult>()
 
@@ -32,6 +33,8 @@ class TournamentRunner(
             roundsCompleted = roundResults.count { it.completed },
             roundsFailed = roundResults.count { !it.completed },
             seed = effectiveSeed,
+            parallelism = 1,
+            durationMillis = startedAt.elapsedNow().inWholeMilliseconds,
             botScores = aggregateBotScores(config.participants, roundResults),
             roundResults = roundResults.toList(),
         )

@@ -221,7 +221,7 @@ Seed: 42
 Scores:
 1. Turtle  522 pts  41 wins
 2. Rebel    486 pts  36 wins
-3. Berzerker    129 pts  21 wins
+3. Bully        129 pts  21 wins
 
 Failed rounds:
 - Round 17 exceeded maxActionsPerRound=100000
@@ -238,7 +238,7 @@ Score CSV example:
 section,tournament_seed,round_seed,seats,max_actions,action_log_entries,rank,bot_id,bot_name,score,wins,round,completed,winner,actions_taken,failure_reason
 score,42,,,,,1,cautious,Turtle,522,41,,,,,
 score,42,,,,,2,target-leader,Rebel,486,36,,,,,
-score,42,,,,,3,attack-when-stronger,Berzerker,129,21,,,,,
+score,42,,,,,3,attack-when-stronger,Bully,129,21,,,,,
 ```
 
 Round CSV example:
