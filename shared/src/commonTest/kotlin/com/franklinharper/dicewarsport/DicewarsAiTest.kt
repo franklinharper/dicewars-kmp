@@ -68,7 +68,7 @@ class DicewarsAiTest {
     }
 
     @Test
-    fun strategicBotReturnsLegalMoveOnSimpleBoard() {
+    fun emperorBotReturnsLegalMoveOnSimpleBoard() {
         val game = aiGame()
 
         val move = StrategicBot(FixedAiRandom(0)).chooseMove(game)
@@ -78,8 +78,8 @@ class DicewarsAiTest {
     }
 
     @Test
-    fun cautiousBotSkipsAttackFromVulnerableAreaWhenEstablishedAndNoStock() {
-        val game = cautiousSkipGame()
+    fun turtleBotSkipsAttackFromVulnerableAreaWhenEstablishedAndNoStock() {
+        val game = turtleSkipGame()
 
         assertNull(CautiousBot().chooseMove(game))
     }
@@ -123,7 +123,7 @@ private fun aiGame(): DicewarsGame {
     return game.setAreaTc(0).setAreaTc(1)
 }
 
-private fun cautiousSkipGame(): DicewarsGame {
+private fun turtleSkipGame(): DicewarsGame {
     val game = DicewarsGame(
         pmax = 2,
         turnOrder = listOf(0, 1, 2, 3, 4, 5, 6, 7),

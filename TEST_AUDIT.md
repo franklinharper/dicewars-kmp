@@ -47,7 +47,7 @@ Examples:
 - `targetTheLeaderTargetsDominantPlayerWhenOneExists`
 - `targetTheLeaderSkipsEqualDiceAttackWhenNeitherSideIsTopRankedAndRandomRollIsLow`
 - `targetTheLeaderAllowsEqualDiceAttackWhenRandomRollIsHigh`
-- `cautiousBotSkipsAttackFromVulnerableAreaWhenEstablishedAndNoStock`
+- `turtleBotSkipsAttackFromVulnerableAreaWhenEstablishedAndNoStock`
 
 Issue: These tests are valuable if the current AI personalities are a contract, but brittle if heuristics are expected to evolve. They often assert a particular move or decision from a handcrafted board. Small heuristic improvements can break them even when the bot still returns legal and reasonable moves.
 

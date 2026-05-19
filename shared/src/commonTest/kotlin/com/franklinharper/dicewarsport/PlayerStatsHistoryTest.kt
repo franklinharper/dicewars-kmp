@@ -9,16 +9,16 @@ class PlayerStatsHistoryTest {
         val history = PlayerStatsHistory.default().recordGameResult(
             participants = listOf(
                 PlayerStatsParticipant(0, "human", "Human"),
-                PlayerStatsParticipant(1, "target-leader", "Rebel"),
-                PlayerStatsParticipant(2, "cautious", "Turtle"),
+                PlayerStatsParticipant(1, "rebel", "Rebel"),
+                PlayerStatsParticipant(2, "turtle", "Turtle"),
             ),
             winnerSeatId = 0,
             eliminationOrderSeatIds = listOf(2, 1),
         )
 
         val human = history.records.getValue("human")
-        val rebel = history.records.getValue("target-leader")
-        val turtle = history.records.getValue("cautious")
+        val rebel = history.records.getValue("rebel")
+        val turtle = history.records.getValue("turtle")
 
         assertEquals(1, human.wins)
         assertEquals(1, human.gamesPlayed)
@@ -40,19 +40,19 @@ class PlayerStatsHistoryTest {
         val history = PlayerStatsHistory.default().recordGameResult(
             participants = listOf(
                 PlayerStatsParticipant(0, "human", "Human"),
-                PlayerStatsParticipant(1, "cautious", "Turtle"),
-                PlayerStatsParticipant(2, "cautious", "Turtle"),
-                PlayerStatsParticipant(3, "attack-when-stronger", "Bully"),
-                PlayerStatsParticipant(4, "attack-when-stronger", "Bully"),
-                PlayerStatsParticipant(5, "strategic", "Emperor"),
-                PlayerStatsParticipant(6, "target-leader", "Rebel"),
+                PlayerStatsParticipant(1, "turtle", "Turtle"),
+                PlayerStatsParticipant(2, "turtle", "Turtle"),
+                PlayerStatsParticipant(3, "bully", "Bully"),
+                PlayerStatsParticipant(4, "bully", "Bully"),
+                PlayerStatsParticipant(5, "emperor", "Emperor"),
+                PlayerStatsParticipant(6, "rebel", "Rebel"),
             ),
             winnerSeatId = 2,
             eliminationOrderSeatIds = listOf(3, 1, 0, 6, 4, 5),
         )
 
-        val turtle = history.records.getValue("cautious")
-        val berzerker = history.records.getValue("attack-when-stronger")
+        val turtle = history.records.getValue("turtle")
+        val berzerker = history.records.getValue("bully")
 
         assertEquals(1, turtle.wins)
         assertEquals(2, turtle.gamesPlayed)

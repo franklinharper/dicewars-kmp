@@ -59,10 +59,10 @@ class GameReducer(
     }
 
     private fun aiIdFor(strategy: AiStrategy?): String = when (strategy) {
-        is TargetTheLeader -> "target-leader"
-        is CautiousBot -> "cautious"
-        is AlwaysAttackWhenStrongerBot -> "attack-when-stronger"
-        is StrategicBot -> "strategic"
+        is TargetTheLeader -> "rebel"
+        is CautiousBot -> "turtle"
+        is AlwaysAttackWhenStrongerBot -> "bully"
+        is StrategicBot -> "emperor"
         is MaxBot -> "max"
         else -> strategy?.name ?: "unknown-bot"
     }

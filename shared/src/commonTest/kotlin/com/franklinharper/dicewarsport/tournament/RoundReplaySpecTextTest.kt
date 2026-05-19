@@ -9,7 +9,7 @@ class RoundReplaySpecTextTest {
     fun formatsAndParsesPasteableReplaySpecBlock() {
         val spec = RoundReplaySpecText(
             roundSeed = 1502463084,
-            seatIds = listOf("target-leader", "cautious"),
+            seatIds = listOf("rebel", "turtle"),
             maxActions = 2,
             lastSteps = 50,
         )
@@ -20,7 +20,7 @@ class RoundReplaySpecTextTest {
             """
             ROUND_REPLAY_SPEC
             roundSeed=1502463084
-            seats=target-leader,cautious
+            seats=rebel,turtle
             maxActions=2
             lastSteps=50
             END_ROUND_REPLAY_SPEC

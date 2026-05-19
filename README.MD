@@ -16,35 +16,37 @@ Run the desktop **hot reload** application: `./gradlew :desktopApp:hotRun --auto
 Run a headless bot tournament from the command line:
 
 ```bash
-./scripts/run-tournament --bots target-leader,cautious,attack-when-stronger,max --rounds 100 --seed 1
+./scripts/run-tournament --bots rebel,turtle,bully,max --rounds 100 --seed 1
 ```
 
-Available bot IDs:
+Available bot IDs and strategies:
 
-- `target-leader` — Rebel
-- `cautious` — Turtle
-- `attack-when-stronger` — Bully
-- `strategic` — Emperor
-- `frontier-commander` — Frontier Commander
-- `max` — Max
+| Bot ID | Display name | Strategy |
+|---|---|---|
+| `rebel` | Rebel | Targets the leading player. If one player has more than 40% of all dice, Rebel only attacks battles involving that leader. It can take equal-dice attacks when the current player or target is top-ranked, or when a random aggression check passes. |
+| `turtle` | Turtle | Conservative bot. Avoids attacks that are not clearly favorable, avoids attacking when a stronger friendly neighbor could attack instead, and avoids weakening vulnerable positions when established and out of reserve. |
+| `bully` | Bully | Randomly chooses among legal adjacent attacks where the attacker has strictly more dice than the defender. |
+| `emperor` | Emperor | Strategic search bot. Uses cautious-style filters, exact battle win probabilities, and a 3-ply expectiminimax search to choose attacks that improve a board-strength evaluation. |
+| `frontier-commander` | Frontier Commander | Tournament-focused expected-value bot. Evaluates success and failure board states for every attack, applies tactical adjustments for leaders, eliminations, pressure, and connectivity, then attacks only above a dynamic threshold. |
+| `max` | Max | Uses the same policy as human autoplay. It attacks only when attacker dice are at least defender dice, reserves plus reinforcements can refill all owned territories to 8 after either outcome, and chooses the most favorable qualifying attack. |
 
 Useful options:
 
 ```bash
 # CSV output to stdout
-./scripts/run-tournament --bots target-leader,cautious,max --rounds 100 --format csv
+./scripts/run-tournament --bots rebel,turtle,max --rounds 100 --format csv
 
 # Write a report to a file
-./scripts/run-tournament --bots target-leader,cautious,max --rounds 100 --out build/tournament.txt
+./scripts/run-tournament --bots rebel,turtle,max --rounds 100 --out build/tournament.txt
 
 # Run rounds concurrently. By default this uses CPU count minus 1.
-./scripts/run-tournament --bots target-leader,cautious,max --rounds 1000
+./scripts/run-tournament --bots rebel,turtle,max --rounds 1000
 
 # Override parallelism explicitly
-./scripts/run-tournament --bots target-leader,cautious,max --rounds 1000 --parallel 4
+./scripts/run-tournament --bots rebel,turtle,max --rounds 1000 --parallel 4
 
 # Capture action logs for failed rounds
-./scripts/run-tournament --bots target-leader,cautious,max --rounds 100 --log-failed-rounds
+./scripts/run-tournament --bots rebel,turtle,max --rounds 100 --log-failed-rounds
 ```
 
 The wrapper rebuilds the tournament CLI only when its source inputs changed, then runs the generated fat JAR from `dist/tournament-cli/`.
@@ -52,7 +54,7 @@ The wrapper rebuilds the tournament CLI only when its source inputs changed, the
 Replay a reported round:
 
 ```bash
-./scripts/replay-round --round-seed 123 --seats target-leader,cautious,max --max-actions 100000 --last-steps 50
+./scripts/replay-round --round-seed 123 --seats rebel,turtle,max --max-actions 100000 --last-steps 50
 ```
 
 For all CLI options:

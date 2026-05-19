@@ -137,7 +137,7 @@ class GameUiReducerTest {
         val state = GameUiState(
             screen = DicewarsScreen.AiTurn,
             game = game,
-            playerIds = mapOf(0 to "human", 1 to "target-leader", 2 to "cautious"),
+            playerIds = mapOf(0 to "human", 1 to "rebel", 2 to "turtle"),
             playerNames = mapOf(0 to "Human", 1 to "Rebel", 2 to "Turtle"),
         )
 
@@ -165,7 +165,7 @@ class GameUiReducerTest {
             game = game,
             resolvingAfterHumanEliminated = true,
             eliminatedPlayerSeats = listOf(0),
-            playerIds = mapOf(0 to "human", 1 to "target-leader", 2 to "cautious"),
+            playerIds = mapOf(0 to "human", 1 to "rebel", 2 to "turtle"),
             playerNames = mapOf(0 to "Human", 1 to "Rebel", 2 to "Turtle"),
         )
 
@@ -175,7 +175,7 @@ class GameUiReducerTest {
         assertEquals(false, result.state.resolvingAfterHumanEliminated)
         assertTrue(result.state.gameStatsRecorded)
         assertEquals(emptyList(), result.soundEvents)
-        assertEquals(1, result.state.playerStatsHistory.records.getValue("target-leader").wins)
+        assertEquals(1, result.state.playerStatsHistory.records.getValue("rebel").wins)
     }
 
     @Test

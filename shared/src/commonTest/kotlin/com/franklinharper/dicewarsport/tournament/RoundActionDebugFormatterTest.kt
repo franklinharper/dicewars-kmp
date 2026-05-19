@@ -11,7 +11,7 @@ class RoundActionDebugFormatterTest {
             RoundActionLogEntry(
                 actionNumber = 12,
                 playerSlot = 0,
-                participantId = "target-leader",
+                participantId = "rebel",
                 actionType = RoundActionType.Attack,
                 from = 3,
                 to = 4,
@@ -22,11 +22,11 @@ class RoundActionDebugFormatterTest {
                     defenderTotal = 1,
                     success = true,
                 ),
-                eliminatedParticipantIds = listOf("cautious"),
+                eliminatedParticipantIds = listOf("turtle"),
             ),
         )
 
-        assertEquals("Step 12: target-leader attacks 3 -> 4, success, eliminated: cautious", text)
+        assertEquals("Step 12: rebel attacks 3 -> 4, success, eliminated: turtle", text)
     }
 
     @Test
@@ -35,7 +35,7 @@ class RoundActionDebugFormatterTest {
             RoundActionLogEntry(
                 actionNumber = 101,
                 playerSlot = 0,
-                participantId = "target-leader",
+                participantId = "rebel",
                 actionType = RoundActionType.RoundFailed,
             ),
         )

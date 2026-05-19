@@ -394,7 +394,7 @@ private fun usage(): String = """
 Dicewars bot tournament
 
 Usage:
-  run-tournament --bots target-leader,cautious,attack-when-stronger --rounds 100 [options]
+  run-tournament --bots rebel,turtle,bully --rounds 100 [options]
 
 Options:
   --bots <ids>          Comma-separated bot IDs. Available: ${BuiltInTournamentParticipants.byId.keys.sorted().joinToString(",")}
@@ -410,14 +410,14 @@ Options:
   --help, -h            Show this help.
 
 Replay:
-  run-tournament replay-round --round-seed 123 --seats target-leader,cautious --max-actions 100000 --last-steps 50
+  run-tournament replay-round --round-seed 123 --seats rebel,turtle --max-actions 100000 --last-steps 50
 """.trimIndent()
 
 private fun replayUsage(): String = """
 Dicewars round replay
 
 Usage:
-  replay-round --round-seed <int> --seats target-leader,cautious,attack-when-stronger [options]
+  replay-round --round-seed <int> --seats rebel,turtle,bully [options]
 
 Options:
   --round-seed <int>    Required round seed from a tournament report.
