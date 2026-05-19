@@ -3,6 +3,7 @@ package com.franklinharper.dicewarsport
 import com.franklinharper.dicewarsport.ai.AiStrategy
 import com.franklinharper.dicewarsport.ai.AlwaysAttackWhenStrongerBot
 import com.franklinharper.dicewarsport.ai.CautiousBot
+import com.franklinharper.dicewarsport.ai.MaxBot
 import com.franklinharper.dicewarsport.ai.StrategicBot
 import com.franklinharper.dicewarsport.ai.TargetTheLeader
 import kotlin.time.Clock
@@ -21,6 +22,7 @@ class GameReducer(
         { CautiousBot() },
         { rng -> AlwaysAttackWhenStrongerBot(rng) },
         { rng -> StrategicBot(rng) },
+        { MaxBot() },
     )
 
     private fun assignAiStrategiesFor(game: DicewarsGame, spectateMode: Boolean): Map<Int, AiStrategy> {
@@ -61,6 +63,7 @@ class GameReducer(
         is CautiousBot -> "cautious"
         is AlwaysAttackWhenStrongerBot -> "attack-when-stronger"
         is StrategicBot -> "strategic"
+        is MaxBot -> "max"
         else -> strategy?.name ?: "unknown-bot"
     }
 
@@ -178,7 +181,7 @@ class GameReducer(
     private fun onHumanAutoplayStep(state: GameUiState): Result {
         if (state.screen != DicewarsScreen.HumanTurn || !state.humanAutoplayEnabled) return Result(state)
         val player = state.game.currentPlayer()
-        val move = chooseHumanAutoplayMove(state.game, player) ?: return onTurnFinished(state)
+        val move = chooseAutoplayMove(state.game, player) ?: return onTurnFinished(state)
         val roll = rollBattle(
             attackerDiceCount = state.game.areas[move.first].dice,
             defenderDiceCount = state.game.areas[move.second].dice,
@@ -208,38 +211,6 @@ class GameReducer(
         )
     }
 
-    private fun chooseHumanAutoplayMove(game: DicewarsGame, player: Int): Pair<Int, Int>? {
-        for (from in game.areas.indices) {
-            val attacker = game.areas[from]
-            if (attacker.size <= 0 || attacker.owner != player || attacker.dice <= 1) continue
-            for (to in attacker.adjacentAreas.indices) {
-                if (attacker.adjacentAreas[to] == 0) continue
-                val defender = game.areas.getOrNull(to) ?: continue
-                if (
-                    defender.size > 0 &&
-                    defender.owner != player &&
-                    attacker.dice >= defender.dice &&
-                    game.isLegalAttack(from, to, player) &&
-                    game.hasEnoughReserveAfterEitherOutcome(from, to, player)
-                ) {
-                    return from to to
-                }
-            }
-        }
-        return null
-    }
-
-    private fun DicewarsGame.hasEnoughReserveAfterEitherOutcome(from: Int, to: Int, player: Int): Boolean =
-        canReplenishAllOwnedTerritories(resolveBattleForSimulation(from, to, success = true), player) &&
-            canReplenishAllOwnedTerritories(resolveBattleForSimulation(from, to, success = false), player)
-
-    private fun canReplenishAllOwnedTerritories(gameAfterAttack: DicewarsGame, player: Int): Boolean {
-        val suppliedGame = gameAfterAttack.startSupply(player)
-        val diceNeeded = suppliedGame.areas.sumOf { area ->
-            if (area.size > 0 && area.owner == player) DicewarsGame.MAX_DICE - area.dice else 0
-        }
-        return suppliedGame.players[player].stock >= diceNeeded
-    }
 
     private fun onAiStep(state: GameUiState): Result {
         if (state.screen != DicewarsScreen.AiTurn && !state.resolvingAfterHumanEliminated) return Result(state)

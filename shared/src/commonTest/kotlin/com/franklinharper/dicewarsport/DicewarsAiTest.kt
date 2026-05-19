@@ -2,6 +2,7 @@ package com.franklinharper.dicewarsport
 
 import com.franklinharper.dicewarsport.ai.AlwaysAttackWhenStrongerBot
 import com.franklinharper.dicewarsport.ai.CautiousBot
+import com.franklinharper.dicewarsport.ai.MaxBot
 import com.franklinharper.dicewarsport.ai.StrategicBot
 import com.franklinharper.dicewarsport.ai.TargetTheLeader
 import kotlin.test.Test

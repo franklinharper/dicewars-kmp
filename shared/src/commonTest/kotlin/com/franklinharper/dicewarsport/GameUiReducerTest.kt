@@ -1,6 +1,7 @@
 package com.franklinharper.dicewarsport
 
 import com.franklinharper.dicewarsport.ai.AiStrategy
+import com.franklinharper.dicewarsport.ai.MaxBot
 import com.franklinharper.dicewarsport.ai.Move
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -201,6 +202,40 @@ class GameUiReducerTest {
 
         assertEquals(0, result.state.game.areas[2].owner)
         assertEquals(7, result.state.game.areas[2].dice)
+    }
+
+    @Test
+    fun autoplayStrategyChoosesMostFavorableAvailableAttack() {
+        val game = uiGame(
+            areas = mapOf(
+                1 to AreaData(size = 5, owner = 0, dice = 5, adjacentAreas = adj(2)),
+                2 to AreaData(size = 5, owner = 1, dice = 5, adjacentAreas = adj(1)),
+                3 to AreaData(size = 5, owner = 0, dice = 8, adjacentAreas = adj(4)),
+                4 to AreaData(size = 5, owner = 1, dice = 2, adjacentAreas = adj(3)),
+            ),
+        ).withStock(player = 0, stock = 64)
+        val state = GameUiState(screen = DicewarsScreen.HumanTurn, game = game, humanAutoplayEnabled = true)
+
+        val result = reducer().reduce(state, GameAction.HumanAutoplayStep)
+
+        assertEquals(1, result.state.game.areas[2].owner)
+        assertEquals(0, result.state.game.areas[4].owner)
+    }
+
+    @Test
+    fun maxBotUsesAutoplayStrategy() {
+        val game = uiGame(
+            areas = mapOf(
+                1 to AreaData(size = 5, owner = 0, dice = 5, adjacentAreas = adj(2)),
+                2 to AreaData(size = 5, owner = 1, dice = 5, adjacentAreas = adj(1)),
+                3 to AreaData(size = 5, owner = 0, dice = 8, adjacentAreas = adj(4)),
+                4 to AreaData(size = 5, owner = 1, dice = 2, adjacentAreas = adj(3)),
+            ),
+        ).withStock(player = 0, stock = 64)
+
+        val move = MaxBot().chooseMove(game)
+
+        assertEquals(Move(3, 4), move)
     }
 
     @Test
