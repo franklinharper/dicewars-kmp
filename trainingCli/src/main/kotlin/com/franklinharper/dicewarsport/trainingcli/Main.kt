@@ -34,6 +34,7 @@ fun runTrainingCli(
 
     return when (options.command) {
         TrainingCommand.BenchmarkSimulator -> runBenchmarkSimulator(options, stdout, stderr)
+        TrainingCommand.GenerateImitationData -> runGenerateImitationData(options, stdout, stderr)
     }
 }
 
@@ -76,6 +77,36 @@ private fun runBenchmarkSimulator(
     return 0
 }
 
+private fun runGenerateImitationData(
+    options: TrainingCliOptions,
+    stdout: (String) -> Unit,
+    stderr: (String) -> Unit,
+): Int {
+    val participants = try {
+        options.botIds.map { botId ->
+            BuiltInTournamentParticipants.byId[botId]
+                ?: throw IllegalArgumentException("Unknown bot '$botId'. Available bots: ${BuiltInTournamentParticipants.byId.keys.sorted().joinToString(",")}")
+        }
+    } catch (error: IllegalArgumentException) {
+        stderr("Error: ${error.message}")
+        return 2
+    }
+
+    val outPath = options.outPath ?: run {
+        stderr("Error: --out is required for generate-imitation-data")
+        return 2
+    }
+    val result = ImitationDataGenerator().generate(
+        participants = participants,
+        rounds = options.rounds,
+        seed = options.seed,
+        maxActionsPerRound = options.maxActions,
+        outPath = java.io.File(outPath),
+    )
+    stdout("Imitation data written: ${result.recordsWritten} records to $outPath\n")
+    return 0
+}
+
 data class TrainingCliOptions(
     val command: TrainingCommand,
     val rounds: Int = 1000,
@@ -83,6 +114,7 @@ data class TrainingCliOptions(
     val botIds: List<String> = listOf("bully", "emperor", "frontier-commander", "max", "optimus", "terminator2", "turtle"),
     val parallel: Int = 1,
     val maxActions: Int = 100_000,
+    val outPath: String? = null,
     val help: Boolean = false,
 ) {
     companion object {
@@ -106,6 +138,10 @@ data class TrainingCliOptions(
                 ?.filter { it.isNotEmpty() }
                 ?: listOf("bully", "emperor", "frontier-commander", "max", "optimus", "terminator2", "turtle")
             require(botIds.size >= 2) { "At least two bots are required" }
+            val outPath = values["out"]
+            require(command != TrainingCommand.GenerateImitationData || !outPath.isNullOrBlank()) {
+                "--out is required for generate-imitation-data"
+            }
             return TrainingCliOptions(
                 command = command,
                 rounds = rounds,
@@ -113,6 +149,7 @@ data class TrainingCliOptions(
                 botIds = botIds,
                 parallel = parallel,
                 maxActions = maxActions,
+                outPath = outPath,
             )
         }
 
@@ -143,7 +180,8 @@ data class TrainingCliOptions(
 }
 
 enum class TrainingCommand(val cliName: String) {
-    BenchmarkSimulator("benchmark-simulator");
+    BenchmarkSimulator("benchmark-simulator"),
+    GenerateImitationData("generate-imitation-data");
 
     companion object {
         fun fromCliName(value: String): TrainingCommand = entries.firstOrNull { it.cliName == value }
@@ -156,9 +194,11 @@ Dicewars neural training CLI
 
 Usage:
   training-cli benchmark-simulator [options]
+  training-cli generate-imitation-data --out <path.jsonl.gz> [options]
 
 Commands:
-  benchmark-simulator    Run a small headless simulator benchmark.
+  benchmark-simulator       Run a small headless simulator benchmark.
+  generate-imitation-data   Generate gzip-compressed JSONL imitation examples.
 
 Options:
   --rounds <count>       Number of rounds. Default: 1000.
@@ -166,6 +206,7 @@ Options:
   --bots <ids>           Comma-separated bot ids.
   --parallel <count>     Reserved for parallel benchmark workers. Default: 1.
   --max-actions <count>  Max actions per round. Default: 100000.
+  --out <path>           Output path for commands that write files.
   --help, -h             Show this help.
 """.trimIndent()
 
