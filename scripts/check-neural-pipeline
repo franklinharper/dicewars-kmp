@@ -7,5 +7,5 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
   cd "$ROOT_DIR"
   ./gradlew --no-configuration-cache :shared:jvmTest :trainingCli:test --console=plain
   ./scripts/check-training-data-compatibility
-  (cd training && PYTHONPATH=. python3 -m unittest discover -s tests -v)
+  source training/.venv/bin/activate && (cd training && PYTHONPATH=. python3 -m unittest discover -s tests -v)
 )

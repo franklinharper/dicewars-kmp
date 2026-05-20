@@ -6,6 +6,39 @@ from pathlib import Path
 from dicewars_nn.model import AREA_MAX, PLAYER_MAX, ModelConfig, build_model, output_shapes
 
 
+def export_model(model, config: ModelConfig, out: Path, batch_size: int = 1) -> None:
+    import torch
+
+    model.eval()
+    dummy_inputs = (
+        torch.zeros(batch_size, AREA_MAX, config.node_feature_count, dtype=torch.float32),
+        torch.zeros(batch_size, AREA_MAX, AREA_MAX, dtype=torch.float32),
+        torch.zeros(batch_size, config.global_feature_count, dtype=torch.float32),
+        torch.ones(batch_size, AREA_MAX, dtype=torch.bool),
+        torch.ones(batch_size, PLAYER_MAX, dtype=torch.bool),
+    )
+    out.parent.mkdir(parents=True, exist_ok=True)
+    torch.onnx.export(
+        model,
+        dummy_inputs,
+        out,
+        input_names=["node_features", "adjacency", "global_features", "area_mask", "player_mask"],
+        output_names=["policy", "value"],
+        dynamic_axes={
+            "node_features": {0: "batch"},
+            "adjacency": {0: "batch"},
+            "global_features": {0: "batch"},
+            "area_mask": {0: "batch"},
+            "player_mask": {0: "batch"},
+            "policy": {0: "batch"},
+            "value": {0: "batch"},
+        },
+        opset_version=18,
+        external_data=False,
+    )
+    print(f"Exported ONNX model to {out}")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Export the Dicewars neural bot model to ONNX")
     parser.add_argument("--out", required=True, help="Output ONNX path")
@@ -30,34 +63,7 @@ def main(argv: list[str] | None = None) -> int:
         raise RuntimeError("PyTorch is required for ONNX export") from exc
 
     model = build_model(config)
-    model.eval()
-    batch = args.batch_size
-    dummy_inputs = (
-        torch.zeros(batch, AREA_MAX, config.node_feature_count, dtype=torch.float32),
-        torch.zeros(batch, AREA_MAX, AREA_MAX, dtype=torch.float32),
-        torch.zeros(batch, config.global_feature_count, dtype=torch.float32),
-        torch.ones(batch, AREA_MAX, dtype=torch.bool),
-        torch.ones(batch, PLAYER_MAX, dtype=torch.bool),
-    )
-    out.parent.mkdir(parents=True, exist_ok=True)
-    torch.onnx.export(
-        model,
-        dummy_inputs,
-        out,
-        input_names=["node_features", "adjacency", "global_features", "area_mask", "player_mask"],
-        output_names=["policy", "value"],
-        dynamic_axes={
-            "node_features": {0: "batch"},
-            "adjacency": {0: "batch"},
-            "global_features": {0: "batch"},
-            "area_mask": {0: "batch"},
-            "player_mask": {0: "batch"},
-            "policy": {0: "batch"},
-            "value": {0: "batch"},
-        },
-        opset_version=18,
-    )
-    print(f"Exported ONNX model to {out}")
+    export_model(model, config, out, batch_size=args.batch_size)
     return 0
 
 
