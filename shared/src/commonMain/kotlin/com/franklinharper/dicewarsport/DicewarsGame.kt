@@ -56,8 +56,14 @@ data class DicewarsGame(
      * actual adjacent area IDs, so this helper converts the dense markers into
      * small IntArrays. Bots can compute this once per move decision and then
      * iterate only real neighbors instead of scanning every possible area.
+     *
+     * Results are cached; the cache is lost when [copy] creates a new instance
+     * (acceptable since adjacency never changes and recomputation is cheap).
      */
+    private var cachedNeighbors: Array<IntArray>? = null
+
     fun precomputeNeighbors(): Array<IntArray> {
+        cachedNeighbors?.let { return it }
         val result = Array(AREA_MAX) { IntArray(0) }
         for (areaId in 1 until AREA_MAX) {
             val adjacentAreas = areas[areaId].adjacentAreas
@@ -74,6 +80,7 @@ data class DicewarsGame(
             }
             result[areaId] = neighbors
         }
+        cachedNeighbors = result
         return result
     }
 }

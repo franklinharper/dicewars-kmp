@@ -162,12 +162,13 @@ fun DicewarsGame.setAreaTc(player: Int): DicewarsGame {
         }
     }
 
-    val neighbors = precomputeNeighbors()
     for (areaId in 1 until DicewarsGame.AREA_MAX) {
         val area = areas[areaId]
         if (area.size == 0 || area.owner != player) continue
 
-        for (neighborId in neighbors[areaId]) {
+        val adjacent = area.adjacentAreas
+        for (neighborId in 1 until DicewarsGame.AREA_MAX) {
+            if (adjacent[neighborId] == 0) continue
             val neighbor = areas[neighborId]
             if (neighbor.size == 0 || neighbor.owner != player) continue
             union(areaId, neighborId)

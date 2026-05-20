@@ -54,7 +54,7 @@ if [[ -f "$JAR_FILE" && "$CURRENT_HASH" == "$RECORDED_HASH" ]]; then
   echo "Tournament CLI unchanged; using existing build." >&2
 else
   echo "Tournament CLI source changed or artifact missing; rebuilding..." >&2
-  (cd "$ROOT_DIR" && ./gradlew --no-configuration-cache :tournamentCli:generateTournamentDist --console=plain)
+  (cd "$ROOT_DIR" && ./gradlew --no-configuration-cache :tournamentCli:generateTournamentDist --console=plain >&2)
   printf '%s' "$CURRENT_HASH" > "$HASH_FILE"
 fi
 

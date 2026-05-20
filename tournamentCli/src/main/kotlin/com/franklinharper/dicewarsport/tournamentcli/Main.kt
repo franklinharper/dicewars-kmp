@@ -2,7 +2,7 @@ package com.franklinharper.dicewarsport.tournamentcli
 
 import com.franklinharper.dicewarsport.tournament.BuiltInTournamentParticipants
 import com.franklinharper.dicewarsport.tournament.CsvTournamentReportFormatter
-import com.franklinharper.dicewarsport.tournament.BotGameRunner
+import com.franklinharper.dicewarsport.tournament.FastBotGameRunner
 import com.franklinharper.dicewarsport.tournament.BotRoundStepper
 import com.franklinharper.dicewarsport.tournament.PlainTextTournamentReportFormatter
 import com.franklinharper.dicewarsport.tournament.RoundActionDebugFormatter
@@ -72,8 +72,9 @@ fun runTournamentCli(
     }
 
     val parallelism = options.parallel
+    val fastRunner = FastBotGameRunner()
     val result = if (parallelism > 1) {
-        ParallelTournamentRunner().run(
+        ParallelTournamentRunner(fastRunner).run(
             TournamentConfig(
                 participants = participants,
                 rounds = options.rounds,
@@ -85,7 +86,7 @@ fun runTournamentCli(
             parallelism = parallelism,
         )
     } else {
-        TournamentRunner().run(
+        TournamentRunner(fastRunner).run(
             TournamentConfig(
                 participants = participants,
                 rounds = options.rounds,
@@ -330,7 +331,7 @@ data class ReplayOptions(
 }
 
 class ParallelTournamentRunner(
-    private val roundRunner: RoundRunner = BotGameRunner(),
+    private val roundRunner: RoundRunner = FastBotGameRunner(),
 ) {
     fun run(config: TournamentConfig, parallelism: Int): TournamentResult {
         val startedAt = kotlin.time.TimeSource.Monotonic.markNow()
