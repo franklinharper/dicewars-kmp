@@ -1,0 +1,10 @@
+[project]
+name = "dicewars-neural-training"
+version = "0.1.0"
+description = "Training utilities for the Dicewars neural bot"
+requires-python = ">=3.11"
+
+dependencies = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
