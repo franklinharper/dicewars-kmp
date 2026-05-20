@@ -10,7 +10,7 @@ import com.franklinharper.dicewarsport.resolveBattleForSimulation
  * Candidate attacks are filtered using CautiousBot's proven safety rules.
  * The evaluation function uses a MaxN heuristic: 2×my_strength − sum(all).
  */
-class StrategicBot(private val random: RandomSource) : AiStrategy {
+class EmperorBot(private val random: RandomSource) : AiStrategy {
     override val name = "Emperor"
 
     override fun chooseMove(game: DicewarsGame): Move? {

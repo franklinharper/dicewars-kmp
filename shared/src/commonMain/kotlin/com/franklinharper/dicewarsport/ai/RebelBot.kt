@@ -3,7 +3,7 @@ package com.franklinharper.dicewarsport.ai
 import com.franklinharper.dicewarsport.DicewarsGame
 import com.franklinharper.dicewarsport.RandomSource
 
-class TargetTheLeader(private val random: RandomSource) : AiStrategy {
+class RebelBot(private val random: RandomSource) : AiStrategy {
     override val name = "Rebel"
 
     override fun chooseMove(game: DicewarsGame): Move? {

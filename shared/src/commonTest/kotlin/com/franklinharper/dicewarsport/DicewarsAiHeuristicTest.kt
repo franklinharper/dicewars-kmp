@@ -1,6 +1,6 @@
 package com.franklinharper.dicewarsport
 
-import com.franklinharper.dicewarsport.ai.TargetTheLeader
+import com.franklinharper.dicewarsport.ai.RebelBot
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -19,7 +19,7 @@ class DicewarsAiHeuristicTest {
             ),
         )
 
-        val move = TargetTheLeader(FixedRandom(0)).chooseMove(game)
+        val move = RebelBot(FixedRandom(0)).chooseMove(game)
 
         assertNotNull(move)
         assertEquals(2, move.to, "player 1 has more than 40% of total dice and should be targeted")
@@ -37,7 +37,7 @@ class DicewarsAiHeuristicTest {
             pmax = 4,
         )
 
-        assertNull(TargetTheLeader(FixedRandom(0)).chooseMove(game))
+        assertNull(RebelBot(FixedRandom(0)).chooseMove(game))
     }
 
     @Test
@@ -52,7 +52,7 @@ class DicewarsAiHeuristicTest {
             pmax = 4,
         )
 
-        val move = TargetTheLeader(FixedRandom(2, 0)).chooseMove(game)
+        val move = RebelBot(FixedRandom(2, 0)).chooseMove(game)
 
         assertEquals(1, move?.from)
         assertEquals(2, move?.to)

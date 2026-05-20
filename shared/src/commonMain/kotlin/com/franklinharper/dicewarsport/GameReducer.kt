@@ -1,13 +1,13 @@
 package com.franklinharper.dicewarsport
 
 import com.franklinharper.dicewarsport.ai.AiStrategy
-import com.franklinharper.dicewarsport.ai.AlwaysAttackWhenStrongerBot
-import com.franklinharper.dicewarsport.ai.CautiousBot
+import com.franklinharper.dicewarsport.ai.BullyBot
+import com.franklinharper.dicewarsport.ai.TurtleBot
 import com.franklinharper.dicewarsport.ai.FrontierCommanderBot
 import com.franklinharper.dicewarsport.ai.MaxBot
 import com.franklinharper.dicewarsport.ai.OptimusBot
-import com.franklinharper.dicewarsport.ai.StrategicBot
-import com.franklinharper.dicewarsport.ai.TargetTheLeader
+import com.franklinharper.dicewarsport.ai.EmperorBot
+import com.franklinharper.dicewarsport.ai.RebelBot
 import com.franklinharper.dicewarsport.ai.Terminator2Bot
 import com.franklinharper.dicewarsport.ai.TerminatorBot
 import kotlin.time.Clock
@@ -22,10 +22,10 @@ class GameReducer(
     private var activeAiStrategies: Map<Int, AiStrategy> = aiStrategies
 
     private val availableAiFactories: List<(RandomSource) -> AiStrategy> = listOf(
-        { rng -> TargetTheLeader(rng) },
-        { CautiousBot() },
-        { rng -> AlwaysAttackWhenStrongerBot(rng) },
-        { rng -> StrategicBot(rng) },
+        { rng -> RebelBot(rng) },
+        { TurtleBot() },
+        { rng -> BullyBot(rng) },
+        { rng -> EmperorBot(rng) },
         { FrontierCommanderBot() },
         { MaxBot() },
         { OptimusBot() },
@@ -67,10 +67,10 @@ class GameReducer(
     }
 
     private fun aiIdFor(strategy: AiStrategy?): String = when (strategy) {
-        is TargetTheLeader -> "rebel"
-        is CautiousBot -> "turtle"
-        is AlwaysAttackWhenStrongerBot -> "bully"
-        is StrategicBot -> "emperor"
+        is RebelBot -> "rebel"
+        is TurtleBot -> "turtle"
+        is BullyBot -> "bully"
+        is EmperorBot -> "emperor"
         is FrontierCommanderBot -> "frontier-commander"
         is MaxBot -> "max"
         is OptimusBot -> "optimus"
@@ -227,7 +227,7 @@ class GameReducer(
     private fun onAiStep(state: GameUiState): Result {
         if (state.screen != DicewarsScreen.AiTurn && !state.resolvingAfterHumanEliminated) return Result(state)
         val player = state.game.currentPlayer()
-        val strategy = activeAiStrategies[player] ?: aiStrategies[player] ?: TargetTheLeader(random)
+        val strategy = activeAiStrategies[player] ?: aiStrategies[player] ?: RebelBot(random)
         val move = strategy.chooseMove(state.game) ?: return onTurnFinished(state)
         if (!state.game.isLegalAttack(move.from, move.to, player)) return onTurnFinished(state)
 
@@ -269,7 +269,7 @@ class GameReducer(
         var guard = 0
         while (terminalScreenOrNull(current.game, current.spectateMode) == null && guard < 100_000) {
             val player = current.game.currentPlayer()
-            val strategy = activeAiStrategies[player] ?: aiStrategies[player] ?: TargetTheLeader(random)
+            val strategy = activeAiStrategies[player] ?: aiStrategies[player] ?: RebelBot(random)
             val move = strategy.chooseMove(current.game)
             current = if (move != null && current.game.isLegalAttack(move.from, move.to, player)) {
                 val roll = rollBattle(

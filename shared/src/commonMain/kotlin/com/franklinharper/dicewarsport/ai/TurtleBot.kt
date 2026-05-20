@@ -3,7 +3,7 @@ package com.franklinharper.dicewarsport.ai
 import com.franklinharper.dicewarsport.DicewarsGame
 import com.franklinharper.dicewarsport.isLegalAttack
 
-class CautiousBot : AiStrategy {
+class TurtleBot : AiStrategy {
     override val name = "Turtle"
 
     override fun chooseMove(game: DicewarsGame): Move? {
