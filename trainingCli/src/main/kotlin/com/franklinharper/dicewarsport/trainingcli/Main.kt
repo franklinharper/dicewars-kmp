@@ -35,6 +35,7 @@ fun runTrainingCli(
     return when (options.command) {
         TrainingCommand.BenchmarkSimulator -> runBenchmarkSimulator(options, stdout, stderr)
         TrainingCommand.GenerateImitationData -> runGenerateImitationData(options, stdout, stderr)
+        TrainingCommand.ValidateModelMetadata -> runValidateModelMetadata(options, stdout, stderr)
     }
 }
 
@@ -107,6 +108,26 @@ private fun runGenerateImitationData(
     return 0
 }
 
+private fun runValidateModelMetadata(
+    options: TrainingCliOptions,
+    stdout: (String) -> Unit,
+    stderr: (String) -> Unit,
+): Int {
+    val modelsDir = options.modelsDir ?: run {
+        stderr("Error: --models-dir is required for validate-model-metadata")
+        return 2
+    }
+    return try {
+        val result = ModelArtifactValidator().validate(java.io.File(modelsDir))
+        stdout("Model metadata valid: ${result.modelId} (${result.modelBytes} bytes)\n")
+        if (result.warning != null) stdout("Warning: ${result.warning}\n")
+        0
+    } catch (error: IllegalArgumentException) {
+        stderr("Error: ${error.message}")
+        2
+    }
+}
+
 data class TrainingCliOptions(
     val command: TrainingCommand,
     val rounds: Int = 1000,
@@ -115,6 +136,7 @@ data class TrainingCliOptions(
     val parallel: Int = 1,
     val maxActions: Int = 100_000,
     val outPath: String? = null,
+    val modelsDir: String? = null,
     val help: Boolean = false,
 ) {
     companion object {
@@ -139,8 +161,12 @@ data class TrainingCliOptions(
                 ?: listOf("bully", "emperor", "frontier-commander", "max", "optimus", "terminator2", "turtle")
             require(botIds.size >= 2) { "At least two bots are required" }
             val outPath = values["out"]
+            val modelsDir = values["models-dir"]
             require(command != TrainingCommand.GenerateImitationData || !outPath.isNullOrBlank()) {
                 "--out is required for generate-imitation-data"
+            }
+            require(command != TrainingCommand.ValidateModelMetadata || !modelsDir.isNullOrBlank()) {
+                "--models-dir is required for validate-model-metadata"
             }
             return TrainingCliOptions(
                 command = command,
@@ -150,6 +176,7 @@ data class TrainingCliOptions(
                 parallel = parallel,
                 maxActions = maxActions,
                 outPath = outPath,
+                modelsDir = modelsDir,
             )
         }
 
@@ -181,7 +208,8 @@ data class TrainingCliOptions(
 
 enum class TrainingCommand(val cliName: String) {
     BenchmarkSimulator("benchmark-simulator"),
-    GenerateImitationData("generate-imitation-data");
+    GenerateImitationData("generate-imitation-data"),
+    ValidateModelMetadata("validate-model-metadata");
 
     companion object {
         fun fromCliName(value: String): TrainingCommand = entries.firstOrNull { it.cliName == value }
@@ -195,10 +223,12 @@ Dicewars neural training CLI
 Usage:
   training-cli benchmark-simulator [options]
   training-cli generate-imitation-data --out <path.jsonl.gz> [options]
+  training-cli validate-model-metadata --models-dir <models/neuralbot>
 
 Commands:
   benchmark-simulator       Run a small headless simulator benchmark.
   generate-imitation-data   Generate gzip-compressed JSONL imitation examples.
+  validate-model-metadata   Validate current.txt, model metadata, and model size limits.
 
 Options:
   --rounds <count>       Number of rounds. Default: 1000.
@@ -207,6 +237,7 @@ Options:
   --parallel <count>     Reserved for parallel benchmark workers. Default: 1.
   --max-actions <count>  Max actions per round. Default: 100000.
   --out <path>           Output path for commands that write files.
+  --models-dir <path>    Model artifact root containing current.txt.
   --help, -h             Show this help.
 """.trimIndent()
 
