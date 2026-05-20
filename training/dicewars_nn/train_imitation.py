@@ -21,6 +21,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--checkpoint-dir", default="checkpoints", help="Directory to save checkpoints")
     parser.add_argument("--export-onnx", default=None, help="Export final model to this ONNX path")
     parser.add_argument("--threads", type=int, default=None, help="Number of PyTorch threads (default: all CPUs)")
+    parser.add_argument("--filter-bot", default=None, help="Only train on records from this bot (e.g. terminator2)")
+    parser.add_argument("--tensor-cache", default=None, help="Optional .pt cache path for pre-tensorized records")
     args = parser.parse_args(argv)
 
     import torch
@@ -30,35 +32,63 @@ def main(argv: list[str] | None = None) -> int:
     num_threads = args.threads or os.cpu_count() or 1
     torch.set_num_threads(num_threads)
 
-    t0 = time.time()
-    records = load_all(Path(p) for p in args.data)
-    t1 = time.time()
-    print(f"Loaded {len(records)} records in {t1 - t0:.1f}s")
-
     config = ModelConfig()
     config.validate()
 
-    if args.dry_run:
+    data_paths = [Path(p) for p in args.data]
+    fingerprint = build_cache_fingerprint(data_paths, args.filter_bot)
+    cache_path = Path(args.tensor_cache) if args.tensor_cache else None
+
+    all_tensors = None
+    if cache_path is not None and cache_path.exists():
+        t_cache = time.time()
+        cached = load_tensor_cache(cache_path)
+        if cached.get("fingerprint") == fingerprint:
+            all_tensors = cached["tensors"]
+            print(f"Loaded tensor cache in {time.time() - t_cache:.1f}s: {cache_path}")
+        else:
+            print(f"Tensor cache fingerprint mismatch, rebuilding: {cache_path}")
+
+    if all_tensors is None:
+        t0 = time.time()
+        records = load_all(data_paths)
+        t1 = time.time()
+        print(f"Loaded {len(records)} records in {t1 - t0:.1f}s")
+
+        if args.dry_run:
+            print(f"Model config: {config}")
+            return 0
+
+        # Filter to policy records (policy_weight > 0) for supervised training
+        policy_records = [r for r in records if r.policy_weight > 0]
+        if args.filter_bot:
+            before = len(policy_records)
+            policy_records = [r for r in policy_records if r.bot_id == args.filter_bot]
+            print(f"Filtered to bot={args.filter_bot}: {before} -> {len(policy_records)} records")
+        if not policy_records:
+            print("No policy records found (policy_weight > 0 required)", file=sys.stderr)
+            return 1
+
+        print(f"Policy records: {len(policy_records)}")
+
+        # Pre-tensorize entire dataset once
+        print("Pre-tensorizing dataset...", end=" ", flush=True)
+        t2 = time.time()
+        all_tensors = pretensorize(policy_records, config)
+        t3 = time.time()
+        print(f"{t3 - t2:.1f}s")
+
+        if cache_path is not None:
+            save_tensor_cache(cache_path, all_tensors, fingerprint)
+            print(f"Saved tensor cache: {cache_path}")
+
+    elif args.dry_run:
         print(f"Model config: {config}")
+        print(f"Cached policy records: {all_tensors['targets'].shape[0]}")
         return 0
 
-    # Filter to policy records (policy_weight > 0) for supervised training
-    policy_records = [r for r in records if r.policy_weight > 0]
-    if not policy_records:
-        print("No policy records found (policy_weight > 0 required)", file=sys.stderr)
-        return 1
-
-    print(f"Policy records: {len(policy_records)}")
-
-    # Pre-tensorize entire dataset once
-    print("Pre-tensorizing dataset...", end=" ", flush=True)
-    t2 = time.time()
-    all_tensors = pretensorize(policy_records, config)
-    t3 = time.time()
-    print(f"{t3 - t2:.1f}s")
-
     # Train/val split by index (no data copy)
-    n = len(policy_records)
+    n = int(all_tensors["targets"].shape[0])
     perm = torch.randperm(n, generator=torch.Generator().manual_seed(42))
     val_count = max(1, int(n * args.val_split))
     val_idx = perm[:val_count]
@@ -138,6 +168,40 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
+def build_cache_fingerprint(data_paths: list[Path], filter_bot: str | None) -> dict:
+    return {
+        "files": [
+            {
+                "path": str(path.resolve()),
+                "size": path.stat().st_size,
+                "mtime_ns": path.stat().st_mtime_ns,
+            }
+            for path in data_paths
+        ],
+        "filter_bot": filter_bot,
+        "schema": 1,
+    }
+
+
+def load_tensor_cache(cache_path: Path) -> dict:
+    import torch
+
+    return torch.load(cache_path, map_location="cpu", weights_only=False)
+
+
+def save_tensor_cache(cache_path: Path, tensors: dict, fingerprint: dict) -> None:
+    import torch
+
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(
+        {
+            "fingerprint": fingerprint,
+            "tensors": tensors,
+        },
+        cache_path,
+    )
+
+
 def pretensorize(records: list, config: ModelConfig) -> dict:
     """Convert all records to tensors once, avoiding per-batch Python overhead."""
     import torch
@@ -198,7 +262,7 @@ def train_epoch(
 
         # Policy loss: mask illegal actions to -inf before cross-entropy
         # Use torch.where instead of clone+mask for better performance
-        masked_logits = torch.where(legal_mask.bool(), policy_logits, torch.tensor(float("-inf")))
+        masked_logits = torch.where(legal_mask.bool(), policy_logits, float("-inf"))
         policy_loss = F.cross_entropy(masked_logits, targets)
 
         value_loss = F.mse_loss(value_pred, value_targets)
@@ -260,7 +324,7 @@ def evaluate(
             policy_logits = outputs["policy"]
             value_pred = outputs["value"]
 
-            masked_logits = torch.where(legal_mask.bool(), policy_logits, torch.tensor(float("-inf")))
+            masked_logits = torch.where(legal_mask.bool(), policy_logits, float("-inf"))
             policy_loss = F.cross_entropy(masked_logits, targets)
 
             value_loss = F.mse_loss(value_pred, value_targets)
