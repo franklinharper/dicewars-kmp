@@ -36,6 +36,7 @@ fun runTrainingCli(
         TrainingCommand.BenchmarkSimulator -> runBenchmarkSimulator(options, stdout, stderr)
         TrainingCommand.GenerateImitationData -> runGenerateImitationData(options, stdout, stderr)
         TrainingCommand.ValidateModelMetadata -> runValidateModelMetadata(options, stdout, stderr)
+        TrainingCommand.EvaluateCandidateReport -> runEvaluateCandidateReport(options, stdout, stderr)
     }
 }
 
@@ -108,6 +109,30 @@ private fun runGenerateImitationData(
     return 0
 }
 
+private fun runEvaluateCandidateReport(
+    options: TrainingCliOptions,
+    stdout: (String) -> Unit,
+    stderr: (String) -> Unit,
+): Int {
+    val reportPath = options.reportPath ?: run {
+        stderr("Error: --report is required for evaluate-candidate-report")
+        return 2
+    }
+    return try {
+        val scores = TournamentReportParser.parseBotScores(java.io.File(reportPath).readText())
+        val decision = NeuralCandidateEvaluator.evaluate(scores)
+        stdout(buildString {
+            appendLine("Candidate accepted: ${decision.accepted}")
+            appendLine("Reason: ${decision.reason}")
+            appendLine("Eliminate: ${decision.eliminatedBotId ?: "none"}")
+        })
+        if (decision.accepted) 0 else 1
+    } catch (error: IllegalArgumentException) {
+        stderr("Error: ${error.message}")
+        2
+    }
+}
+
 private fun runValidateModelMetadata(
     options: TrainingCliOptions,
     stdout: (String) -> Unit,
@@ -137,6 +162,7 @@ data class TrainingCliOptions(
     val maxActions: Int = 100_000,
     val outPath: String? = null,
     val modelsDir: String? = null,
+    val reportPath: String? = null,
     val help: Boolean = false,
 ) {
     companion object {
@@ -162,11 +188,15 @@ data class TrainingCliOptions(
             require(botIds.size >= 2) { "At least two bots are required" }
             val outPath = values["out"]
             val modelsDir = values["models-dir"]
+            val reportPath = values["report"]
             require(command != TrainingCommand.GenerateImitationData || !outPath.isNullOrBlank()) {
                 "--out is required for generate-imitation-data"
             }
             require(command != TrainingCommand.ValidateModelMetadata || !modelsDir.isNullOrBlank()) {
                 "--models-dir is required for validate-model-metadata"
+            }
+            require(command != TrainingCommand.EvaluateCandidateReport || !reportPath.isNullOrBlank()) {
+                "--report is required for evaluate-candidate-report"
             }
             return TrainingCliOptions(
                 command = command,
@@ -177,6 +207,7 @@ data class TrainingCliOptions(
                 maxActions = maxActions,
                 outPath = outPath,
                 modelsDir = modelsDir,
+                reportPath = reportPath,
             )
         }
 
@@ -209,7 +240,8 @@ data class TrainingCliOptions(
 enum class TrainingCommand(val cliName: String) {
     BenchmarkSimulator("benchmark-simulator"),
     GenerateImitationData("generate-imitation-data"),
-    ValidateModelMetadata("validate-model-metadata");
+    ValidateModelMetadata("validate-model-metadata"),
+    EvaluateCandidateReport("evaluate-candidate-report");
 
     companion object {
         fun fromCliName(value: String): TrainingCommand = entries.firstOrNull { it.cliName == value }
@@ -224,11 +256,13 @@ Usage:
   training-cli benchmark-simulator [options]
   training-cli generate-imitation-data --out <path.jsonl.gz> [options]
   training-cli validate-model-metadata --models-dir <models/neuralbot>
+  training-cli evaluate-candidate-report --report <tournament-report.txt>
 
 Commands:
-  benchmark-simulator       Run a small headless simulator benchmark.
-  generate-imitation-data   Generate gzip-compressed JSONL imitation examples.
-  validate-model-metadata   Validate current.txt, model metadata, and model size limits.
+  benchmark-simulator        Run a small headless simulator benchmark.
+  generate-imitation-data    Generate gzip-compressed JSONL imitation examples.
+  validate-model-metadata    Validate current.txt, model metadata, and model size limits.
+  evaluate-candidate-report  Apply neural candidate acceptance rule to a tournament report.
 
 Options:
   --rounds <count>       Number of rounds. Default: 1000.
@@ -238,6 +272,7 @@ Options:
   --max-actions <count>  Max actions per round. Default: 100000.
   --out <path>           Output path for commands that write files.
   --models-dir <path>    Model artifact root containing current.txt.
+  --report <path>        Tournament report path for candidate evaluation.
   --help, -h             Show this help.
 """.trimIndent()
 
