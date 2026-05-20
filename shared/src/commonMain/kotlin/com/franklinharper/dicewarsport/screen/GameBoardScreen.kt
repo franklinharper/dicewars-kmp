@@ -91,21 +91,11 @@ fun GameBoardScreen(state: GameUiState, onAction: (GameAction) -> Unit, title: S
             )
             Spacer(Modifier.width(16.dp))
             Button(onClick = { onAction(GameAction.EndTurn) }) { Text("End turn") }
-        } else {
-            if (!state.resolvingAfterHumanEliminated) {
-                LaunchedEffect(state.game) {
-                    delay(300)
-                    onAction(GameAction.AiStep)
-                }
+        } else if (!state.resolvingAfterHumanEliminated) {
+            LaunchedEffect(state.game) {
+                delay(300)
+                onAction(GameAction.AiStep)
             }
-            Box(
-                modifier = Modifier
-                    .size(16.dp)
-                    .clip(CircleShape)
-                    .background(GameColors.getPlayerColor(state.game.currentPlayer())),
-            )
-            Spacer(Modifier.size(8.dp))
-            Text("bot's turn")
         }
     }
     Spacer(Modifier.weight(1f))
