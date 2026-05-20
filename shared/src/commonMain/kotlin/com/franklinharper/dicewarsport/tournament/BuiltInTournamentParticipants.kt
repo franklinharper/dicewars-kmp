@@ -7,6 +7,7 @@ import com.franklinharper.dicewarsport.ai.MaxBot
 import com.franklinharper.dicewarsport.ai.OptimusBot
 import com.franklinharper.dicewarsport.ai.StrategicBot
 import com.franklinharper.dicewarsport.ai.TargetTheLeader
+import com.franklinharper.dicewarsport.ai.Terminator2Bot
 import com.franklinharper.dicewarsport.ai.TerminatorBot
 
 object BuiltInTournamentParticipants {
@@ -58,7 +59,13 @@ object BuiltInTournamentParticipants {
         aiFactory = { TerminatorBot() },
     )
 
-    val all: List<TournamentParticipant> = listOf(targetLeader, turtle, attackWhenStronger, emperor, frontierCommander, max, optimus, terminator)
+    val terminator2 = TournamentParticipant(
+        id = "terminator2",
+        displayName = "Terminator 2",
+        aiFactory = { Terminator2Bot() },
+    )
+
+    val all: List<TournamentParticipant> = listOf(targetLeader, turtle, attackWhenStronger, emperor, frontierCommander, max, optimus, terminator, terminator2)
 
     val byId: Map<String, TournamentParticipant> = all.associateBy { it.id }
 }
