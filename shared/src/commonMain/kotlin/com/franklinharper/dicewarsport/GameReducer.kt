@@ -3,9 +3,13 @@ package com.franklinharper.dicewarsport
 import com.franklinharper.dicewarsport.ai.AiStrategy
 import com.franklinharper.dicewarsport.ai.AlwaysAttackWhenStrongerBot
 import com.franklinharper.dicewarsport.ai.CautiousBot
+import com.franklinharper.dicewarsport.ai.FrontierCommanderBot
 import com.franklinharper.dicewarsport.ai.MaxBot
+import com.franklinharper.dicewarsport.ai.OptimusBot
 import com.franklinharper.dicewarsport.ai.StrategicBot
 import com.franklinharper.dicewarsport.ai.TargetTheLeader
+import com.franklinharper.dicewarsport.ai.Terminator2Bot
+import com.franklinharper.dicewarsport.ai.TerminatorBot
 import kotlin.time.Clock
 
 class GameReducer(
@@ -22,7 +26,11 @@ class GameReducer(
         { CautiousBot() },
         { rng -> AlwaysAttackWhenStrongerBot(rng) },
         { rng -> StrategicBot(rng) },
+        { FrontierCommanderBot() },
         { MaxBot() },
+        { OptimusBot() },
+        { TerminatorBot() },
+        { Terminator2Bot() },
     )
 
     private fun assignAiStrategiesFor(game: DicewarsGame, spectateMode: Boolean): Map<Int, AiStrategy> {
@@ -63,7 +71,11 @@ class GameReducer(
         is CautiousBot -> "turtle"
         is AlwaysAttackWhenStrongerBot -> "bully"
         is StrategicBot -> "emperor"
+        is FrontierCommanderBot -> "frontier-commander"
         is MaxBot -> "max"
+        is OptimusBot -> "optimus"
+        is TerminatorBot -> "terminator"
+        is Terminator2Bot -> "terminator2"
         else -> strategy?.name ?: "unknown-bot"
     }
 
