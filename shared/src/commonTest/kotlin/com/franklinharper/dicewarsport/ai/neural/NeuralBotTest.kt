@@ -6,11 +6,14 @@ import com.franklinharper.dicewarsport.ai.Move
 import com.franklinharper.dicewarsport.aiGame
 import com.franklinharper.dicewarsport.aiAdj
 import com.franklinharper.dicewarsport.setAreaTc
+import com.franklinharper.dicewarsport.FixedAiRandom
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class NeuralBotTest {
+    private val policyOnlyConfig = NeuralBotConfig(NeuralRuntimeStrength.PolicyOnly)
+
     @Test
     fun choosesHighestScoredLegalAttack() {
         val model = FakeNeuralModel().withPolicyScores(
@@ -18,7 +21,7 @@ class NeuralBotTest {
             NeuralActionEncoder.actionIndexFor(Move(1, 3)) to 0.9f,
             NeuralActionEncoder.END_TURN_INDEX to 0.1f,
         )
-        val bot = NeuralBot(model = model)
+        val bot = NeuralBot(model = model, config = policyOnlyConfig, random = FixedAiRandom(0))
 
         assertEquals(Move(1, 3), bot.chooseMove(aiGame()))
     }
@@ -30,7 +33,7 @@ class NeuralBotTest {
             NeuralActionEncoder.actionIndexFor(Move(1, 2)) to 0.4f,
             NeuralActionEncoder.END_TURN_INDEX to 0.1f,
         )
-        val bot = NeuralBot(model = model)
+        val bot = NeuralBot(model = model, config = policyOnlyConfig, random = FixedAiRandom(0))
 
         assertEquals(Move(1, 2), bot.chooseMove(aiGame()))
     }
@@ -41,7 +44,7 @@ class NeuralBotTest {
             NeuralActionEncoder.actionIndexFor(Move(1, 2)) to 0.4f,
             NeuralActionEncoder.END_TURN_INDEX to 0.8f,
         )
-        val bot = NeuralBot(model = model)
+        val bot = NeuralBot(model = model, config = policyOnlyConfig, random = FixedAiRandom(0))
 
         assertNull(bot.chooseMove(aiGame()))
     }
@@ -51,7 +54,7 @@ class NeuralBotTest {
         val model = FakeNeuralModel().withPolicyScores(
             NeuralActionEncoder.END_TURN_INDEX to 0.0f,
         )
-        val bot = NeuralBot(model = model)
+        val bot = NeuralBot(model = model, config = policyOnlyConfig, random = FixedAiRandom(0))
 
         assertNull(bot.chooseMove(noLegalAttackGame()))
     }
@@ -59,7 +62,7 @@ class NeuralBotTest {
     @Test
     fun passesActorAndPerspectiveAsCurrentPlayerForPolicyOnlyMode() {
         val model = CapturingNeuralModel()
-        val bot = NeuralBot(model = model)
+        val bot = NeuralBot(model = model, config = policyOnlyConfig, random = FixedAiRandom(0))
         val game = aiGame()
 
         bot.chooseMove(game)

@@ -1,6 +1,7 @@
 package com.franklinharper.dicewarsport.ai.neural
 
 import com.franklinharper.dicewarsport.DicewarsGame
+import com.franklinharper.dicewarsport.FixedAiRandom
 import com.franklinharper.dicewarsport.aiGame
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -35,7 +36,11 @@ class OnnxNeuralModelTest {
     fun neuralBotPicksFirstLegalActionWhenAllPolicyScoresAreZero() {
         val model = testModel()
         model.use {
-            val bot = NeuralBot(model)
+            val bot = NeuralBot(
+                model = model,
+                config = NeuralBotConfig(NeuralRuntimeStrength.PolicyOnly),
+                random = FixedAiRandom(0),
+            )
             // All-zero policy: first legal attack wins (strict > tie-breaking)
             val game = aiGame()
             val move = bot.chooseMove(game)

@@ -1,6 +1,8 @@
 package com.franklinharper.dicewarsport.ai
 
 import com.franklinharper.dicewarsport.RandomSource
+import com.franklinharper.dicewarsport.ai.neural.NeuralBot
+import com.franklinharper.dicewarsport.ai.neural.NeuralBotFactory
 
 data class BuiltInBot(
     val id: String,
@@ -73,7 +75,14 @@ object BuiltInBots {
         matches = { it is Terminator2Bot },
     )
 
-    val all: List<BuiltInBot> = listOf(rebel, turtle, bully, emperor, frontierCommander, max, optimus, terminator, terminator2)
+    val neural = BuiltInBot(
+        id = "neural",
+        displayName = "Neural",
+        factory = { random -> NeuralBotFactory.create(random) },
+        matches = { it is NeuralBot },
+    )
+
+    val all: List<BuiltInBot> = listOf(rebel, turtle, bully, emperor, frontierCommander, max, optimus, terminator, terminator2, neural)
 
     val byId: Map<String, BuiltInBot> = all.associateBy { it.id }
 
