@@ -1,0 +1,16 @@
+Dicewars Bot Tournament
+Rounds requested: 1000
+Rounds completed: 1000
+Rounds failed: 0
+Seed: 20260520
+Parallel processes: 8
+Duration: 10s 709ms
+
+Scores:
+1. Terminator 2        5,265 pts  258 wins
+2. Max                 4,641 pts   66 wins
+3. Frontier Commander  4,408 pts  168 wins
+4. Turtle              4,282 pts  166 wins
+5. Optimus             3,800 pts  129 wins
+6. Emperor             3,556 pts  142 wins
+7. Bully               3,048 pts   71 wins

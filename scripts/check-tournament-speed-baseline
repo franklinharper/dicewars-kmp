@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+BASELINE="$ROOT_DIR/benchmarks/tournament-speed-baseline-1000.report.txt"
+
+ROUNDS=1000
+SEED=20260520
+BOTS="bully,emperor,frontier-commander,max,optimus,terminator2,turtle"
+PARALLEL=8
+
+if [[ ! -f "$BASELINE" ]]; then
+  echo "Missing baseline report: $BASELINE" >&2
+  exit 2
+fi
+
+actual="$(mktemp)"
+expected_norm="$(mktemp)"
+actual_norm="$(mktemp)"
+cleanup() {
+  rm -f "$actual" "$expected_norm" "$actual_norm"
+}
+trap cleanup EXIT
+
+(
+  cd "$ROOT_DIR"
+  ./scripts/run-tournament \
+    --rounds "$ROUNDS" \
+    --seed "$SEED" \
+    --bots "$BOTS" \
+    --parallel "$PARALLEL"
+) > "$actual"
+
+normalize() {
+  grep -v '^Duration:' "$1"
+}
+
+normalize "$BASELINE" > "$expected_norm"
+normalize "$actual" > "$actual_norm"
+
+if ! diff -u "$expected_norm" "$actual_norm"; then
+  echo "Tournament deterministic result differs from baseline." >&2
+  echo "Baseline: $BASELINE" >&2
+  exit 1
+fi
+
+echo "Tournament deterministic result matches baseline."
