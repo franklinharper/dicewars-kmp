@@ -15,3 +15,5 @@ local.properties
 *.jks
 *.gpg
 *yarn.lock
+__pycache__/
+*.py[cod]
