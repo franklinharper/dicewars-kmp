@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+VENV_ACTIVATE="$ROOT_DIR/training/.venv/bin/activate"
+if [[ ! -f "$VENV_ACTIVATE" ]]; then
+  echo "Missing Python venv: $VENV_ACTIVATE" >&2
+  echo "Create it first (example): python3 -m venv training/.venv && source training/.venv/bin/activate && pip install torch onnx onnxscript" >&2
+  exit 1
+fi
+
+DATA_PATH="$ROOT_DIR/training/data/imitation-v1.jsonl.gz"
+CACHE_PATH="$ROOT_DIR/training/cache/imitation-v1-terminator2.pt"
+CHECKPOINT_DIR="$ROOT_DIR/training/checkpoints/imitation-terminator2"
+MODEL_PATH="$ROOT_DIR/models/neural-v1-terminator2.onnx"
+
+source "$VENV_ACTIVATE"
+
+(
+  cd "$ROOT_DIR/training"
+  PYTHONPATH=. python3 -m dicewars_nn.train_imitation \
+    "$DATA_PATH" \
+    --filter-bot terminator2 \
+    --tensor-cache "$CACHE_PATH" \
+    --epochs 20 \
+    --batch-size 1024 \
+    --lr 1e-3 \
+    --checkpoint-dir "$CHECKPOINT_DIR" \
+    --export-onnx "$MODEL_PATH" \
+    "$@"
+)
