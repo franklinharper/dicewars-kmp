@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+import time
 from pathlib import Path
 
 from dicewars_nn.dataset import load_all
@@ -14,7 +15,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("data", nargs="+", help="Input .jsonl.gz training data files")
     parser.add_argument("--dry-run", action="store_true", help="Load data and build config without training")
     parser.add_argument("--epochs", type=int, default=10, help="Number of training epochs")
-    parser.add_argument("--batch-size", type=int, default=64, help="Training batch size")
+    parser.add_argument("--batch-size", type=int, default=1024, help="Training batch size")
     parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate")
     parser.add_argument("--val-split", type=float, default=0.1, help="Validation split fraction")
     parser.add_argument("--checkpoint-dir", default="checkpoints", help="Directory to save checkpoints")
@@ -29,12 +30,15 @@ def main(argv: list[str] | None = None) -> int:
     num_threads = args.threads or os.cpu_count() or 1
     torch.set_num_threads(num_threads)
 
+    t0 = time.time()
     records = load_all(Path(p) for p in args.data)
+    t1 = time.time()
+    print(f"Loaded {len(records)} records in {t1 - t0:.1f}s")
+
     config = ModelConfig()
     config.validate()
 
     if args.dry_run:
-        print(f"Loaded {len(records)} records")
         print(f"Model config: {config}")
         return 0
 
@@ -44,23 +48,31 @@ def main(argv: list[str] | None = None) -> int:
         print("No policy records found (policy_weight > 0 required)", file=sys.stderr)
         return 1
 
-    print(f"Training on {len(policy_records)} policy records, {args.epochs} epochs, batch_size={args.batch_size}")
-    print(f"PyTorch threads: {torch.get_num_threads()}")
+    print(f"Policy records: {len(policy_records)}")
 
     # Pre-tensorize entire dataset once
-    print("Pre-tensorizing dataset...")
-    tensors = pretensorize(policy_records, config)
+    print("Pre-tensorizing dataset...", end=" ", flush=True)
+    t2 = time.time()
+    all_tensors = pretensorize(policy_records, config)
+    t3 = time.time()
+    print(f"{t3 - t2:.1f}s")
 
-    # Train/val split
+    # Train/val split by index (no data copy)
     n = len(policy_records)
     perm = torch.randperm(n, generator=torch.Generator().manual_seed(42))
     val_count = max(1, int(n * args.val_split))
     val_idx = perm[:val_count]
     train_idx = perm[val_count:]
 
-    train_tensors = {k: v[train_idx] for k, v in tensors.items()}
-    val_tensors = {k: v[val_idx] for k, v in tensors.items()}
-    print(f"Train: {len(train_idx)}, Val: {len(val_idx)}")
+    # Slice into two persistent tensor dicts on CPU
+    train_t = {k: v[train_idx] for k, v in all_tensors.items()}
+    val_t = {k: v[val_idx] for k, v in all_tensors.items()}
+    del all_tensors  # free memory
+
+    print(f"Train: {train_idx.shape[0]}, Val: {val_idx.shape[0]}")
+    print(f"Batch size: {args.batch_size}, Epochs: {args.epochs}, LR: {args.lr}")
+    print(f"PyTorch threads: {torch.get_num_threads()}")
+    print()
 
     device = torch.device("cpu")
     model = build_model(config).to(device)
@@ -71,25 +83,38 @@ def main(argv: list[str] | None = None) -> int:
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
     for epoch in range(args.epochs):
-        train_loss, train_policy_loss, train_value_loss = train_epoch(
-            model, optimizer, train_tensors, args.batch_size, device,
+        t_epoch = time.time()
+        train_loss, train_pl, train_vl = train_epoch(
+            model, optimizer, train_t, args.batch_size, device, epoch=epoch,
         )
-        val_loss, val_policy_loss, val_value_loss = evaluate(
-            model, val_tensors, args.batch_size, device,
+        t_train = time.time()
+
+        val_loss, val_pl, val_vl = evaluate(
+            model, val_t, args.batch_size, device,
         )
+        t_val = time.time()
+
+        train_samples = train_idx.shape[0]
+        val_samples = val_idx.shape[0]
+        train_throughput = train_samples / (t_train - t_epoch)
+        val_throughput = val_samples / (t_val - t_train)
 
         print(
-            f"Epoch {epoch + 1}/{args.epochs} "
-            f"train_loss={train_loss:.4f} (policy={train_policy_loss:.4f}, value={train_value_loss:.4f}) "
-            f"val_loss={val_loss:.4f} (policy={val_policy_loss:.4f}, value={val_value_loss:.4f})"
+            f"Epoch {epoch + 1:3d}/{args.epochs} "
+            f"train={train_loss:.4f} (p={train_pl:.4f} v={train_vl:.4f}) "
+            f"val={val_loss:.4f} (p={val_pl:.4f} v={val_vl:.4f}) "
+            f"| train {train_throughput:,.0f} rec/s val {val_throughput:,.0f} rec/s "
+            f"| {t_val - t_epoch:.1f}s"
         )
 
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             best_path = checkpoint_dir / "best.pt"
+            # Save the underlying model (unwrap compiled)
+            state_model = model._orig_mod if hasattr(model, "_orig_mod") else model
             torch.save({
                 "epoch": epoch + 1,
-                "model_state_dict": model.state_dict(),
+                "model_state_dict": state_model.state_dict(),
                 "optimizer_state_dict": optimizer.state_dict(),
                 "val_loss": val_loss,
                 "config": {
@@ -100,12 +125,14 @@ def main(argv: list[str] | None = None) -> int:
                     "action_count": config.action_count,
                 },
             }, best_path)
-            print(f"  Saved best model: {best_path} (val_loss={val_loss:.4f})")
+
+    print()
 
     # Export ONNX if requested
     if args.export_onnx:
+        state_model = model._orig_mod if hasattr(model, "_orig_mod") else model
         from dicewars_nn.export_onnx import export_model
-        export_model(model, config, Path(args.export_onnx))
+        export_model(state_model, config, Path(args.export_onnx))
         print(f"Exported ONNX model to {args.export_onnx}")
 
     return 0
@@ -116,30 +143,17 @@ def pretensorize(records: list, config: ModelConfig) -> dict:
     import torch
     from dicewars_nn.batch import make_batch
 
-    # Use make_batch on the full dataset to get dense arrays
     batch = make_batch(records)
 
-    node_features = torch.tensor(batch.node_features, dtype=torch.float32)
-    adjacency = torch.tensor(batch.adjacency, dtype=torch.float32)
-    global_features = torch.tensor(batch.global_features, dtype=torch.float32)
-    area_mask = torch.tensor(batch.area_mask, dtype=torch.float32)
-    player_mask = torch.tensor(batch.player_mask, dtype=torch.float32)
-
-    # Dense legal action mask: [N, 1025]
-    legal_mask = torch.tensor(batch.legal_action_mask, dtype=torch.float32)
-
-    targets = torch.tensor(batch.policy_target, dtype=torch.long)
-    value_targets = torch.tensor(batch.value_target, dtype=torch.float32)
-
     return {
-        "node_features": node_features,
-        "adjacency": adjacency,
-        "global_features": global_features,
-        "area_mask": area_mask,
-        "player_mask": player_mask,
-        "legal_mask": legal_mask,
-        "targets": targets,
-        "value_targets": value_targets,
+        "node_features": torch.tensor(batch.node_features, dtype=torch.float32),
+        "adjacency": torch.tensor(batch.adjacency, dtype=torch.float32),
+        "global_features": torch.tensor(batch.global_features, dtype=torch.float32),
+        "area_mask": torch.tensor(batch.area_mask, dtype=torch.float32),
+        "player_mask": torch.tensor(batch.player_mask, dtype=torch.float32),
+        "legal_mask": torch.tensor(batch.legal_action_mask, dtype=torch.float32),
+        "targets": torch.tensor(batch.policy_target, dtype=torch.long),
+        "value_targets": torch.tensor(batch.value_target, dtype=torch.float32),
     }
 
 
@@ -149,6 +163,7 @@ def train_epoch(
     tensors: dict,
     batch_size: int,
     device: "torch.device",
+    epoch: int = 0,
 ) -> tuple[float, float, float]:
     import torch
     import torch.nn.functional as F
@@ -156,34 +171,36 @@ def train_epoch(
     model.train()
     n = tensors["targets"].shape[0]
     perm = torch.randperm(n)
-    n_batches = 0
+    n_batches = (n + batch_size - 1) // batch_size
     total_loss = 0.0
     total_policy_loss = 0.0
     total_value_loss = 0.0
+    t_start = time.time()
+    log_interval = max(1, n_batches // 5)  # log ~5 times per epoch
 
-    for start in range(0, n, batch_size):
+    for i in range(n_batches):
+        start = i * batch_size
         idx = perm[start:start + batch_size]
 
-        node_features = tensors["node_features"][idx].to(device)
-        adjacency = tensors["adjacency"][idx].to(device)
-        global_features = tensors["global_features"][idx].to(device)
-        area_mask = tensors["area_mask"][idx].to(device)
-        player_mask = tensors["player_mask"][idx].to(device)
-        legal_mask = tensors["legal_mask"][idx].to(device)
-        targets = tensors["targets"][idx].to(device)
-        value_targets = tensors["value_targets"][idx].to(device).unsqueeze(1)
+        node_features = tensors["node_features"][idx]
+        adjacency = tensors["adjacency"][idx]
+        global_features = tensors["global_features"][idx]
+        area_mask = tensors["area_mask"][idx]
+        player_mask = tensors["player_mask"][idx]
+        legal_mask = tensors["legal_mask"][idx]
+        targets = tensors["targets"][idx]
+        value_targets = tensors["value_targets"][idx].unsqueeze(1)
 
-        optimizer.zero_grad()
+        optimizer.zero_grad(set_to_none=True)
         outputs = model(node_features, adjacency, global_features, area_mask, player_mask)
         policy_logits = outputs["policy"]
         value_pred = outputs["value"]
 
         # Policy loss: mask illegal actions to -inf before cross-entropy
-        masked_logits = policy_logits.clone()
-        masked_logits[legal_mask == 0] = float("-inf")
+        # Use torch.where instead of clone+mask for better performance
+        masked_logits = torch.where(legal_mask.bool(), policy_logits, torch.tensor(float("-inf")))
         policy_loss = F.cross_entropy(masked_logits, targets)
 
-        # Value loss: MSE
         value_loss = F.mse_loss(value_pred, value_targets)
 
         loss = policy_loss + 0.5 * value_loss
@@ -193,7 +210,18 @@ def train_epoch(
         total_loss += loss.item()
         total_policy_loss += policy_loss.item()
         total_value_loss += value_loss.item()
-        n_batches += 1
+
+        if (i + 1) % log_interval == 0:
+            elapsed = time.time() - t_start
+            done = (i + 1) * batch_size
+            avg_l = total_loss / (i + 1)
+            throughput = done / elapsed
+            print(
+                f"  epoch {epoch + 1} batch {i + 1}/{n_batches} "
+                f"loss={avg_l:.4f} "
+                f"{throughput:,.0f} rec/s "
+                f"({done}/{n})"
+            )
 
     avg = lambda x: x / max(n_batches, 1)
     return avg(total_loss), avg(total_policy_loss), avg(total_value_loss)
@@ -210,7 +238,7 @@ def evaluate(
 
     model.eval()
     n = tensors["targets"].shape[0]
-    n_batches = 0
+    n_batches = (n + batch_size - 1) // batch_size
     total_loss = 0.0
     total_policy_loss = 0.0
     total_value_loss = 0.0
@@ -219,21 +247,20 @@ def evaluate(
         for start in range(0, n, batch_size):
             idx = slice(start, min(start + batch_size, n))
 
-            node_features = tensors["node_features"][idx].to(device)
-            adjacency = tensors["adjacency"][idx].to(device)
-            global_features = tensors["global_features"][idx].to(device)
-            area_mask = tensors["area_mask"][idx].to(device)
-            player_mask = tensors["player_mask"][idx].to(device)
-            legal_mask = tensors["legal_mask"][idx].to(device)
-            targets = tensors["targets"][idx].to(device)
-            value_targets = tensors["value_targets"][idx].to(device).unsqueeze(1)
+            node_features = tensors["node_features"][idx]
+            adjacency = tensors["adjacency"][idx]
+            global_features = tensors["global_features"][idx]
+            area_mask = tensors["area_mask"][idx]
+            player_mask = tensors["player_mask"][idx]
+            legal_mask = tensors["legal_mask"][idx]
+            targets = tensors["targets"][idx]
+            value_targets = tensors["value_targets"][idx].unsqueeze(1)
 
             outputs = model(node_features, adjacency, global_features, area_mask, player_mask)
             policy_logits = outputs["policy"]
             value_pred = outputs["value"]
 
-            masked_logits = policy_logits.clone()
-            masked_logits[legal_mask == 0] = float("-inf")
+            masked_logits = torch.where(legal_mask.bool(), policy_logits, torch.tensor(float("-inf")))
             policy_loss = F.cross_entropy(masked_logits, targets)
 
             value_loss = F.mse_loss(value_pred, value_targets)
@@ -242,7 +269,6 @@ def evaluate(
             total_loss += loss.item()
             total_policy_loss += policy_loss.item()
             total_value_loss += value_loss.item()
-            n_batches += 1
 
     avg = lambda x: x / max(n_batches, 1)
     return avg(total_loss), avg(total_policy_loss), avg(total_value_loss)
