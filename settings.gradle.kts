@@ -33,4 +33,5 @@ include(":androidApp")
 include(":desktopApp")
 include(":webApp")
 include(":tournamentCli")
+include(":trainingCli")
 
