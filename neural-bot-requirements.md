@@ -50,6 +50,7 @@ After each 10,000-round evaluation tournament:
 - If neural bot is **last**, reject candidate.
 - If neural bot is **not last**, eliminate the lowest-performing **non-neural** bot.
 - Continue with the updated league.
+- No additional 2% margin is required initially.
 
 ## Training approach
 
@@ -86,6 +87,14 @@ value estimates: neural network
 policy priors: neural network
 ```
 
+MCTS semantics:
+
+- each decision node has `actor_player = currentPlayer`,
+- root uses fixed `perspective_player = neural bot/root player`,
+- model policy predicts actions for `actor_player`,
+- model value predicts outcome for root `perspective_player`,
+- chance nodes use exact dice win/loss probabilities.
+
 This allows the bot to evaluate multi-step plans, including multiple attacks in one turn.
 
 ## Multi-step strategy requirement
@@ -112,13 +121,11 @@ Policy only
 1024 simulations
 ```
 
-Default recommendation:
+Default Android setting:
 
 ```text
-64 or 256 simulations
+64 simulations
 ```
-
-depending on Android performance.
 
 ## Simulator/training infrastructure
 
@@ -166,6 +173,14 @@ New `trainingCli` handles:
 - metadata export,
 - training-oriented output formats.
 
+Training data v1 format:
+
+```text
+.jsonl.gz
+```
+
+Records are schema-versioned. Emit one value target per active `perspective_player`; apply policy loss only when `perspective_player == actor_player`.
+
 Suggested commands:
 
 ```bash
@@ -205,7 +220,24 @@ nodes = territories
 edges = adjacency
 ```
 
-Inputs:
+Inputs use fixed maximum sizes:
+
+```text
+AREA_MAX = 32
+PLAYER_MAX = 8
+```
+
+Initial tensors:
+
+```text
+node_features[32][F]
+adjacency[32][32]
+global_features[G]
+area_mask[32]
+player_mask[8]
+```
+
+Inputs include:
 
 - owner,
 - dice count,
@@ -213,27 +245,44 @@ Inputs:
 - current-player-relative ownership,
 - player stock,
 - max connected component,
-- turn/player context.
+- turn/player context,
+- `actor_player`, whose policy is being predicted,
+- `perspective_player`, whose scalar value is being predicted.
 
 Outputs:
 
 - policy over fixed action space,
-- value estimating expected tournament score / placement.
+- scalar perspective-player value.
+
+Value target:
+
+```text
+value = final tournament score for perspective_player / max_possible_score
+```
+
+For 7-player tournaments:
+
+```text
+max_possible_score = 14
+```
 
 Action space:
 
 ```text
-all from/to territory attack pairs + end turn
+attack action index = from * 32 + to
+end turn index      = 1024
+action count        = 1025
 ```
 
-Invalid actions must be masked.
+Invalid actions must be masked. `end turn` is always legal.
 
 ## Model bridge into app
 
 Use:
 
 ```text
-ONNX Runtime
+ONNX Runtime Android
+ONNX Runtime JVM
 ```
 
 Pipeline:
@@ -252,22 +301,21 @@ The initial shipped app target is Android, but model storage should not be Andro
 
 Do not store model only under `androidApp`.
 
-Use shared platform-neutral location:
+Use shared platform-neutral immutable version directories plus a current pointer:
 
 ```text
-models/neuralbot/current/
+models/neuralbot/neuralbot-YYYYMMDD-HHMM-<short_git_sha>/
+  model.onnx
+  model.metadata.json
+  training-config.yaml
+  evaluation-report.md
+
+models/neuralbot/current.txt
 ```
 
-Suggested contents:
+`current.txt` contains the active immutable model directory name.
 
-```text
-models/neuralbot/current/model.onnx
-models/neuralbot/current/model.metadata.json
-models/neuralbot/current/training-config.yaml
-models/neuralbot/current/evaluation-report.md
-```
-
-Android build should package/copy from this shared directory.
+Android build should package/copy the model resolved from `current.txt`.
 
 ## Model size limits
 
@@ -294,10 +342,12 @@ fail loudly
 
 No silent fallback to heuristic bots.
 
+The app should fail loudly when the neural bot is constructed/selected, not at app startup.
+
 This should apply in:
 
 - app runtime,
-- tournament CLI,
+- tournament CLI participant setup when `neural` is included,
 - training CLI evaluation.
 
 ## Reproducibility requirements
@@ -335,12 +385,20 @@ Official candidate evaluation:
 ./scripts/run-tournament --rounds 10000 --bots neural,bully,emperor,frontier-commander,max,optimus,terminator2 --parallel 8
 ```
 
+Evaluation seed policy:
+
+- use one recorded blind evaluation seed per candidate,
+- generate the seed if not provided,
+- write the seed to the evaluation report,
+- do not train on the evaluation seed.
+
 Acceptance:
 
 - neural bot must not finish last,
 - neural bot must beat at least one non-neural bot,
 - lowest non-neural bot is eliminated if neural is accepted,
-- compare by tournament score first, wins second.
+- compare by tournament score first, wins second,
+- no 2% margin initially.
 
 Final validation uses existing tournament CLI, not training CLI.
 
