@@ -14,8 +14,8 @@ def export_model(model, config: ModelConfig, out: Path, batch_size: int = 1) -> 
         torch.zeros(batch_size, AREA_MAX, config.node_feature_count, dtype=torch.float32),
         torch.zeros(batch_size, AREA_MAX, AREA_MAX, dtype=torch.float32),
         torch.zeros(batch_size, config.global_feature_count, dtype=torch.float32),
-        torch.ones(batch_size, AREA_MAX, dtype=torch.bool),
-        torch.ones(batch_size, PLAYER_MAX, dtype=torch.bool),
+        torch.ones(batch_size, AREA_MAX, dtype=torch.float32),
+        torch.ones(batch_size, PLAYER_MAX, dtype=torch.float32),
     )
     out.parent.mkdir(parents=True, exist_ok=True)
     torch.onnx.export(
