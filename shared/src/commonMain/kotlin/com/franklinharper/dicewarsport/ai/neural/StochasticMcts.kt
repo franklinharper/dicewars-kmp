@@ -276,10 +276,9 @@ class ChanceNode(
     private fun expandOutcomes() {
         val winGame = game.resolveBattleForSimulation(from, to, success = true)
         val loseGame = game.resolveBattleForSimulation(from, to, success = false)
+        // Same player continues after both win and loss; turn only ends on explicit end-turn
         winChild = DecisionNode(winGame, player, parent = this)
-        // On loss, turn passes to next player
-        val nextGame = loseGame.nextPlayer()
-        lossChild = DecisionNode(nextGame, nextGame.currentPlayer(), parent = this)
+        lossChild = DecisionNode(loseGame, player, parent = this)
     }
 
     override fun toString(): String = "ChanceNode(from=$from, to=$to, visits=$visitCount)"
