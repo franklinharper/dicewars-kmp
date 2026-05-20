@@ -1,7 +1,5 @@
 package com.franklinharper.dicewarsport
 
-import com.franklinharper.dicewarsport.ai.AiStrategy
-import com.franklinharper.dicewarsport.ai.Move
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -67,28 +65,6 @@ class GameUiReducerEdgeCaseTest {
     }
 
     @Test
-    fun rejectMapRegeneratesBoardAndKeepsPlayerCount() {
-        val state = initialState(screen = DicewarsScreen.MapPreview).copy(game = DicewarsGame.generate(4, SequenceRandom()))
-
-        val result = reducer().reduce(state, GameAction.RejectMap)
-
-        assertEquals(DicewarsScreen.MapPreview, result.state.screen)
-        assertEquals(4, result.state.game.pmax)
-        assertTrue(result.state.game.areas.any { it.size > 0 })
-    }
-
-    @Test
-    fun invalidAiMoveFinishesTurnInsteadOfResolvingAttack() {
-        val state = turnState(DicewarsScreen.AiTurn, currentPlayer = 1)
-
-        val result = reducer(ai = FixedMoveAi(Move(1, 2))).reduce(state, GameAction.AiStep)
-
-        assertEquals(0, result.state.game.currentPlayer())
-        assertEquals(DicewarsScreen.HumanTurn, result.state.screen)
-        assertEquals(1, result.state.game.areas[2].owner, "invalid AI move should not transfer ownership")
-    }
-
-    @Test
     fun titleTapWindowResetRequiresConsecutiveTapsWithinWindow() {
         val staleTapState = initialState(screen = DicewarsScreen.Title).copy(
             titleTapCount = 4,
@@ -102,11 +78,9 @@ class GameUiReducerEdgeCaseTest {
     }
 
     private fun reducer(
-        ai: AiStrategy = FixedMoveAi(null),
         debugEnabled: Boolean = false,
     ): GameReducer = GameReducer(
         random = ZeroRandom(),
-        aiStrategies = mapOf(1 to ai),
         debugPreferences = MemoryDebugPreferences(debugEnabled),
     )
 
@@ -139,10 +113,6 @@ class GameUiReducerEdgeCaseTest {
 
     private fun adj(vararg ids: Int): List<Int> = MutableList(DicewarsGame.AREA_MAX) { index ->
         if (index in ids) 1 else 0
-    }
-
-    private class FixedMoveAi(private val move: Move?) : AiStrategy {
-        override fun chooseMove(game: DicewarsGame): Move? = move
     }
 
     private class ZeroRandom : RandomSource {

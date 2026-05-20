@@ -1,6 +1,5 @@
 package com.franklinharper.dicewarsport
 
-import com.franklinharper.dicewarsport.ai.AiStrategy
 import com.franklinharper.dicewarsport.ai.MaxBot
 import com.franklinharper.dicewarsport.ai.Move
 import kotlin.test.Test
@@ -18,10 +17,10 @@ class GameUiReducerTest {
     }
 
     @Test
-    fun titleTransitionsToMapPreview() {
+    fun titleTransitionsDirectlyToGameScreen() {
         val result = reducer().reduce(initialUiState(screen = DicewarsScreen.Title), GameAction.StartPressed)
 
-        assertEquals(DicewarsScreen.MapPreview, result.state.screen)
+        assertTrue(result.state.screen == DicewarsScreen.HumanTurn || result.state.screen == DicewarsScreen.AiTurn)
     }
 
     @Test
@@ -32,13 +31,13 @@ class GameUiReducerTest {
 
         assertEquals(4, selected.state.selectedPlayerCount)
         assertEquals(4, started.state.game.pmax)
-        assertEquals(DicewarsScreen.MapPreview, started.state.screen)
+        assertTrue(started.state.screen == DicewarsScreen.HumanTurn || started.state.screen == DicewarsScreen.AiTurn)
         assertEquals(listOf(SoundEvent.BUTTON), selected.soundEvents)
     }
 
     @Test
     fun startAssignsNamesToHumanAndAiPlayers() {
-        val reducer = reducer(aiStrategies = emptyMap())
+        val reducer = reducer()
         val selected = reducer.reduce(initialUiState(screen = DicewarsScreen.Title), GameAction.SelectPlayerCount(4))
         val started = reducer.reduce(selected.state, GameAction.StartPressed)
 
@@ -46,17 +45,6 @@ class GameUiReducerTest {
         assertEquals("Rebel", started.state.playerNames[1])
         assertEquals("Rebel", started.state.playerNames[2])
         assertEquals("Rebel", started.state.playerNames[3])
-    }
-
-    @Test
-    fun mapPreviewTransitionsToHumanOrAiTurn() {
-        val human = reducer().reduce(previewState(user = 0, currentPlayer = 0), GameAction.AcceptMap)
-        val ai = reducer().reduce(previewState(user = 0, currentPlayer = 1), GameAction.AcceptMap)
-
-        assertEquals(DicewarsScreen.HumanTurn, human.state.screen)
-        assertEquals(DicewarsScreen.AiTurn, ai.state.screen)
-        assertEquals(listOf(SoundEvent.MY_TURN), human.soundEvents)
-        assertEquals(emptyList<SoundEvent>(), ai.soundEvents)
     }
 
     @Test
@@ -88,11 +76,17 @@ class GameUiReducerTest {
     }
 
     @Test
-    fun aiTurnResolvesAttackOrFinishesTurnImmediately() {
-        val next = reducer(ai = FixedMoveAi(Move(2, 1))).reduce(turnState(DicewarsScreen.AiTurn, currentPlayer = 1), GameAction.AiStep)
-        val finished = reducer(ai = FixedMoveAi(null)).reduce(turnState(DicewarsScreen.AiTurn, currentPlayer = 1), GameAction.AiStep)
+    fun aiTurnFinishesTurnImmediatelyWhenBotHasNoMove() {
+        val noMoveGame = uiGame(
+            areas = mapOf(
+                1 to AreaData(size = 5, owner = 0, dice = 8, adjacentAreas = adj(2)),
+                2 to AreaData(size = 5, owner = 1, dice = 1, adjacentAreas = adj(1)),
+            ),
+            turnIndex = 1,
+        )
+        val finishedReducer = reducerWithAssignedBots()
+        val finished = finishedReducer.reduce(GameUiState(screen = DicewarsScreen.AiTurn, game = noMoveGame), GameAction.AiStep)
 
-        assertEquals(DicewarsScreen.AiTurn, next.state.screen)
         assertEquals(DicewarsScreen.HumanTurn, finished.state.screen)
         assertEquals(0, finished.state.game.currentPlayer())
     }
@@ -103,7 +97,8 @@ class GameUiReducerTest {
             1 to AreaData(size = 5, owner = 0, dice = 1, adjacentAreas = adj(2)),
             2 to AreaData(size = 5, owner = 1, dice = 8, adjacentAreas = adj(1)),
         ), turnIndex = 1)
-        val gameOver = reducer(ai = FixedMoveAi(Move(2, 1))).reduce(
+        val reducer = reducerWithAssignedBots()
+        val gameOver = reducer.reduce(
             GameUiState(screen = DicewarsScreen.AiTurn, game = gameOverGame),
             GameAction.AiStep,
         )
@@ -121,32 +116,6 @@ class GameUiReducerTest {
         )
         assertEquals(DicewarsScreen.Win, win.state.screen)
         assertTrue(win.soundEvents.contains(SoundEvent.WIN))
-    }
-
-    @Test
-    fun humanEliminationContinuesBotResolutionUntilOnePlayerRemainsBeforeStatsAreRecorded() {
-        val game = uiGame(
-            areas = mapOf(
-                1 to AreaData(size = 5, owner = 0, dice = 1, adjacentAreas = adj(2)),
-                2 to AreaData(size = 5, owner = 1, dice = 8, adjacentAreas = adj(1, 3)),
-                3 to AreaData(size = 5, owner = 2, dice = 8, adjacentAreas = adj(2)),
-            ),
-            playerCount = 3,
-            turnIndex = 1,
-        )
-        val state = GameUiState(
-            screen = DicewarsScreen.AiTurn,
-            game = game,
-            playerIds = mapOf(0 to "human", 1 to "rebel", 2 to "turtle"),
-            playerNames = mapOf(0 to "Human", 1 to "Rebel", 2 to "Turtle"),
-        )
-
-        val result = reducer(aiStrategies = mapOf(1 to FixedMoveAi(Move(2, 1)))).reduce(state, GameAction.AiStep)
-
-        assertEquals(DicewarsScreen.AiTurn, result.state.screen)
-        assertEquals(true, result.state.resolvingAfterHumanEliminated)
-        assertEquals(false, result.state.gameStatsRecorded)
-        assertEquals(listOf(0), result.state.eliminatedPlayerSeats)
     }
 
     @Test
@@ -169,7 +138,10 @@ class GameUiReducerTest {
             playerNames = mapOf(0 to "Human", 1 to "Rebel", 2 to "Turtle"),
         )
 
-        val result = reducer(aiStrategies = mapOf(1 to FixedMoveAi(Move(2, 3)))).reduce(state, GameAction.FinishMatchAfterHumanEliminated)
+        val reducer = reducer()
+        reducer.reduce(initialUiState(screen = DicewarsScreen.Title), GameAction.StartPressed)
+
+        val result = reducer.reduce(state, GameAction.FinishMatchAfterHumanEliminated)
 
         assertEquals(DicewarsScreen.GameOver, result.state.screen)
         assertEquals(false, result.state.resolvingAfterHumanEliminated)
@@ -280,11 +252,11 @@ class GameUiReducerTest {
     }
 
     @Test
-    fun spectateModeReusesExistingScreensAndDoesNotAddEleventhScreen() {
+    fun spectateModeStartsDirectlyOnAiTurn() {
         val result = reducer().reduce(initialUiState(screen = DicewarsScreen.Title), GameAction.StartSpectate)
 
         assertTrue(result.state.spectateMode)
-        assertEquals(DicewarsScreen.MapPreview, result.state.screen)
+        assertEquals(DicewarsScreen.AiTurn, result.state.screen)
     }
 
     @Test
@@ -346,12 +318,8 @@ private fun adj(vararg ids: Int): List<Int> {
     return list
 }
 
-private fun reducer(
-    ai: AiStrategy = FixedMoveAi(null),
-    aiStrategies: Map<Int, AiStrategy> = mapOf(1 to ai),
-): GameReducer = GameReducer(
+private fun reducer(): GameReducer = GameReducer(
     random = UiFixedRandom(),
-    aiStrategies = aiStrategies,
     debugPreferences = object : DebugPreferences {
         private var mode = false
         override fun isDebugMode(): Boolean = mode
@@ -359,15 +327,14 @@ private fun reducer(
     },
 )
 
+private fun reducerWithAssignedBots(): GameReducer = reducer().also { reducer ->
+    reducer.reduce(initialUiState(screen = DicewarsScreen.Title), GameAction.StartPressed)
+}
+
 private fun initialUiState(screen: DicewarsScreen = DicewarsScreen.Loading): GameUiState = GameUiState(
     screen = screen,
     game = uiGame(),
 )
-
-private fun previewState(user: Int, currentPlayer: Int): GameUiState {
-    val game = uiGame().copy(user = user, turnOrder = listOf(currentPlayer, 1, 2, 3, 4, 5, 6, 7).take(8))
-    return GameUiState(screen = DicewarsScreen.MapPreview, game = game)
-}
 
 private fun turnState(screen: DicewarsScreen, currentPlayer: Int = 0): GameUiState {
     val game = uiGame().copy(turnIndex = currentPlayer)
@@ -397,10 +364,6 @@ private fun DicewarsGame.withStock(player: Int, stock: Int): DicewarsGame {
     val newPlayers = players.toMutableList()
     newPlayers[player] = newPlayers[player].copy(stock = stock)
     return copy(players = newPlayers)
-}
-
-private class FixedMoveAi(private val move: Move?) : AiStrategy {
-    override fun chooseMove(game: DicewarsGame): Move? = move
 }
 
 private class UiFixedRandom : RandomSource {

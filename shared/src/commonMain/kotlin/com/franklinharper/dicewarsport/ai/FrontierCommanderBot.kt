@@ -57,7 +57,7 @@ class FrontierCommanderBot : AiStrategy {
         }
 
         val activeEnemies = (0 until game.pmax).count { it != player && game.players[it].areaCount > 0 }
-        val attackThreshold = when {
+        val baseAttackThreshold = when {
             game.players[player].areaCount <= 2 -> 8.0
             activeEnemies <= 2 -> if (bestProbability >= 0.80) -2.0 else 8.0
             activeEnemies == 3 -> when {
@@ -71,7 +71,35 @@ class FrontierCommanderBot : AiStrategy {
                 else -> 300.0
             }
         }
-        return if (bestMove != null && bestScore >= attackThreshold) bestMove else null
+        val dominantEconomy = hasDominantEconomy(game, player, bestMove, bestProbability)
+        val attackThreshold = if (dominantEconomy) {
+            minOf(baseAttackThreshold, if (bestProbability >= 0.80) 4.0 else 18.0)
+        } else {
+            baseAttackThreshold
+        }
+        return if (bestMove != null && (bestScore >= attackThreshold || dominantEconomy)) bestMove else null
+    }
+
+    private fun hasDominantEconomy(game: DicewarsGame, player: Int, bestMove: Move?, bestProbability: Double): Boolean {
+        val move = bestMove ?: return false
+        val source = game.areas[move.from]
+        val target = game.areas[move.to]
+        if (source.dice < target.dice || bestProbability < 0.42) return false
+
+        val own = game.players[player]
+        var strongestEnemyDice = 0
+        var strongestEnemySupply = 0
+        for (enemy in 0 until game.pmax) {
+            if (enemy == player) continue
+            val enemyData = game.players[enemy]
+            if (enemyData.areaCount <= 0) continue
+            strongestEnemyDice = maxOf(strongestEnemyDice, enemyData.diceCount)
+            strongestEnemySupply = maxOf(strongestEnemySupply, enemyData.maxConnectedAreaCount)
+        }
+
+        return own.diceCount >= strongestEnemyDice + 4 &&
+            own.stock + own.maxConnectedAreaCount >= DicewarsGame.MAX_DICE &&
+            own.maxConnectedAreaCount + 2 >= strongestEnemySupply
     }
 
     private fun tacticalAdjustment(

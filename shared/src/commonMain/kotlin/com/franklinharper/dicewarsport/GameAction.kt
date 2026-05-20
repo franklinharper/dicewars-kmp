@@ -4,8 +4,6 @@ sealed interface GameAction {
     data object LoadingFinished : GameAction
     data class SelectPlayerCount(val count: Int) : GameAction
     data object StartPressed : GameAction
-    data object AcceptMap : GameAction
-    data object RejectMap : GameAction
     data class TerritoryClicked(val territoryId: Int) : GameAction
     data object EndTurn : GameAction
     data object AiStep : GameAction

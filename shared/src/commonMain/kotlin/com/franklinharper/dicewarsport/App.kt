@@ -63,7 +63,6 @@ fun DicewarsApp(
     when (state.screen) {
         DicewarsScreen.Loading -> LoadingScreen(onAction)
         DicewarsScreen.Title -> TitleScreen(state, onAction)
-        DicewarsScreen.MapPreview -> MapPreviewScreen(state, onAction)
         DicewarsScreen.HumanTurn -> GameBoardScreen(state, onAction, title = "Your turn")
         DicewarsScreen.AiTurn -> GameBoardScreen(state, onAction, title = "Bots playing")
         DicewarsScreen.GameOver -> GameOverScreen(state, onAction)
