@@ -1,0 +1,210 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+VENV_ACTIVATE="$ROOT_DIR/training/.venv/bin/activate"
+if [[ ! -f "$VENV_ACTIVATE" ]]; then
+  echo "Missing Python venv: $VENV_ACTIVATE" >&2
+  exit 1
+fi
+
+DATA_PATH="$ROOT_DIR/training/data/imitation-v1.jsonl.gz"
+CACHE_PATH="$ROOT_DIR/training/cache/imitation-v1-terminator2.pt"
+
+GENERATION=""
+ROUNDS=10000
+SEED=""
+DRY_RUN=0
+
+usage() {
+  cat <<EOF
+Usage: $(basename "$0") --generation <id> [options]
+
+Options:
+  --generation <id>   Generation label (e.g. g001)
+  --rounds <count>    Tournament rounds (default: 10000)
+  --seed <int>        Tournament seed (optional)
+  --dry-run           Print commands only
+  --help              Show this help
+
+Environment:
+  EVOLVE_PARENT_CHECKPOINT  Optional parent checkpoint (.pt) for fine-tuning
+                            default: training/checkpoints/imitation-terminator2/latest.pt
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --generation)
+      GENERATION="$2"; shift 2 ;;
+    --rounds)
+      ROUNDS="$2"; shift 2 ;;
+    --seed)
+      SEED="$2"; shift 2 ;;
+    --dry-run)
+      DRY_RUN=1; shift ;;
+    --help)
+      usage; exit 0 ;;
+    *)
+      echo "Unknown arg: $1" >&2
+      usage >&2
+      exit 1 ;;
+  esac
+done
+
+if [[ -z "$GENERATION" ]]; then
+  echo "--generation is required" >&2
+  usage >&2
+  exit 1
+fi
+
+PARENT_CHECKPOINT="${EVOLVE_PARENT_CHECKPOINT:-$ROOT_DIR/training/checkpoints/imitation-terminator2/latest.pt}"
+if [[ ! -f "$PARENT_CHECKPOINT" ]]; then
+  echo "Parent checkpoint not found: $PARENT_CHECKPOINT" >&2
+  echo "Set EVOLVE_PARENT_CHECKPOINT to a valid checkpoint path." >&2
+  exit 1
+fi
+
+OUT_DIR="$ROOT_DIR/models/neuralbot/$GENERATION"
+REPORT_DIR="$ROOT_DIR/training/reports/evolution/$GENERATION"
+mkdir -p "$OUT_DIR" "$REPORT_DIR"
+
+# Mutant hyperparams (conservative -> aggressive)
+variant_lr() {
+  case "$1" in
+    a) echo 0.0005 ;;
+    b) echo 0.0008 ;;
+    c) echo 0.0010 ;;
+    d) echo 0.0012 ;;
+    e) echo 0.0015 ;;
+    f) echo 0.0020 ;;
+    *) echo "unknown variant: $1" >&2; exit 1 ;;
+  esac
+}
+
+variant_epochs() {
+  case "$1" in
+    a) echo 12 ;;
+    b) echo 16 ;;
+    c) echo 20 ;;
+    d) echo 24 ;;
+    e) echo 28 ;;
+    f) echo 32 ;;
+    *) echo "unknown variant: $1" >&2; exit 1 ;;
+  esac
+}
+
+variant_batch() {
+  case "$1" in
+    a|b|c) echo 1024 ;;
+    d|e|f) echo 2048 ;;
+    *) echo "unknown variant: $1" >&2; exit 1 ;;
+  esac
+}
+
+run_cmd() {
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "+ $*"
+  else
+    eval "$@"
+  fi
+}
+
+source "$VENV_ACTIVATE"
+
+# Train/export variants A..F
+for key in a b c d e f; do
+  variant="neural-$key"
+  lr="$(variant_lr "$key")"
+  epochs="$(variant_epochs "$key")"
+  batch="$(variant_batch "$key")"
+  ckpt_dir="$ROOT_DIR/training/checkpoints/evolution/$GENERATION/$variant"
+  model_out="$OUT_DIR/$variant.onnx"
+  echo "=== Training $variant (lr=$lr, epochs=$epochs, batch=$batch) ==="
+  cmd="cd '$ROOT_DIR/training' && PYTHONPATH=. python3 -m dicewars_nn.train_imitation \
+    '$DATA_PATH' \
+    --filter-bot terminator2 \
+    --tensor-cache '$CACHE_PATH' \
+    --resume-checkpoint '$PARENT_CHECKPOINT' \
+    --epochs $epochs \
+    --batch-size $batch \
+    --lr $lr \
+    --checkpoint-dir '$ckpt_dir' \
+    --export-onnx '$model_out'"
+  run_cmd "$cmd"
+done
+
+TOURNAMENT_REPORT="$REPORT_DIR/tournament.txt"
+SEED_ARGS=""
+if [[ -n "$SEED" ]]; then
+  SEED_ARGS="--seed $SEED"
+fi
+
+JAVA_OPTS="-Ddicewars.neural.model.a=$OUT_DIR/neural-a.onnx \
+-Ddicewars.neural.model.b=$OUT_DIR/neural-b.onnx \
+-Ddicewars.neural.model.c=$OUT_DIR/neural-c.onnx \
+-Ddicewars.neural.model.d=$OUT_DIR/neural-d.onnx \
+-Ddicewars.neural.model.e=$OUT_DIR/neural-e.onnx \
+-Ddicewars.neural.model.f=$OUT_DIR/neural-f.onnx"
+
+echo "=== Running tournament ($ROUNDS rounds) ==="
+cmd="cd '$ROOT_DIR' && DICEWARS_TOURNAMENT_JAVA_OPTS=\"$JAVA_OPTS\" ./scripts/run-tournament \
+  --bots neural-a,neural-b,neural-c,neural-d,neural-e,neural-f,terminator2 \
+  --rounds $ROUNDS $SEED_ARGS | tee '$TOURNAMENT_REPORT'"
+run_cmd "$cmd"
+
+if [[ "$DRY_RUN" -eq 1 ]]; then
+  echo "Dry-run complete."
+  exit 0
+fi
+
+# Pick best neural variant by tournament score
+BEST_LINE=$(python3 - "$TOURNAMENT_REPORT" <<'PY'
+import re, sys
+text = open(sys.argv[1], 'r', encoding='utf-8').read().splitlines()
+best = None
+for line in text:
+    m = re.match(r'^\s*\d+\.\s+(Neural\s+[A-F])\s+([0-9,]+)\s+pts', line)
+    if not m:
+        continue
+    name = m.group(1)
+    score = int(m.group(2).replace(',', ''))
+    if best is None or score > best[1]:
+        best = (name, score)
+if best is None:
+    raise SystemExit('No neural score lines found in tournament report')
+print(f"{best[0]}|{best[1]}")
+PY
+)
+
+BEST_NAME="${BEST_LINE%%|*}"      # e.g. Neural C
+BEST_SCORE="${BEST_LINE##*|}"
+BEST_KEY=$(echo "$BEST_NAME" | awk '{print tolower($2)}')
+BEST_VARIANT="neural-$BEST_KEY"
+BEST_MODEL="$OUT_DIR/$BEST_VARIANT.onnx"
+BEST_CKPT_DIR="$ROOT_DIR/training/checkpoints/evolution/$GENERATION/$BEST_VARIANT"
+BEST_CKPT="$BEST_CKPT_DIR/latest.pt"
+
+CURRENT_DIR="$ROOT_DIR/models/neuralbot/current"
+mkdir -p "$CURRENT_DIR"
+cp "$BEST_MODEL" "$CURRENT_DIR/model.onnx"
+if [[ -f "$BEST_CKPT" ]]; then
+  cp "$BEST_CKPT" "$CURRENT_DIR/latest.pt"
+fi
+printf '%s\n' "$GENERATION/$BEST_VARIANT" > "$ROOT_DIR/models/neuralbot/current.txt"
+
+cat > "$REPORT_DIR/selection.txt" <<EOF
+generation: $GENERATION
+rounds: $ROUNDS
+seed: ${SEED:-none}
+best_variant: $BEST_VARIANT
+best_score: $BEST_SCORE
+source_model: $BEST_MODEL
+current_pointer: models/neuralbot/current.txt -> $GENERATION/$BEST_VARIANT
+EOF
+
+echo "=== Selection complete ==="
+echo "Best variant: $BEST_VARIANT ($BEST_SCORE pts)"
+echo "Promoted to: $CURRENT_DIR/model.onnx"
