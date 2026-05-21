@@ -49,6 +49,29 @@ class TrainImitationTest(unittest.TestCase):
             self.assertTrue(onnx_path.exists(), "ONNX model should be exported")
             self.assertGreater(onnx_path.stat().st_size, 0)
 
+    def test_resume_from_checkpoint(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = _make_data_file(tmp, n=20)
+            ckpt_dir = Path(tmp) / "ckpt"
+            first_exit = main([
+                str(path),
+                "--epochs", "1",
+                "--batch-size", "4",
+                "--checkpoint-dir", str(ckpt_dir),
+            ])
+            self.assertEqual(0, first_exit)
+            resume_path = ckpt_dir / "best.pt"
+            self.assertTrue(resume_path.exists(), "Checkpoint should exist after first run")
+
+            second_exit = main([
+                str(path),
+                "--epochs", "2",
+                "--batch-size", "4",
+                "--checkpoint-dir", str(ckpt_dir),
+                "--resume-checkpoint", str(resume_path),
+            ])
+            self.assertEqual(0, second_exit)
+
 
 if __name__ == "__main__":
     unittest.main()

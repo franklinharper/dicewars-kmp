@@ -23,10 +23,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--threads", type=int, default=None, help="Number of PyTorch threads (default: all CPUs)")
     parser.add_argument("--filter-bot", default=None, help="Only train on records from this bot (e.g. terminator2)")
     parser.add_argument("--tensor-cache", default=None, help="Optional .pt cache path for pre-tensorized records")
+    parser.add_argument("--resume-checkpoint", default=None, help="Resume training from checkpoint .pt")
     args = parser.parse_args(argv)
 
     import torch
-    import torch.nn.functional as F
     from torch import optim
 
     num_threads = args.threads or os.cpu_count() or 1
@@ -109,10 +109,25 @@ def main(argv: list[str] | None = None) -> int:
     optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
 
     best_val_loss = float("inf")
+    start_epoch = 0
+    if args.resume_checkpoint:
+        resume_path = Path(args.resume_checkpoint)
+        if not resume_path.exists():
+            raise FileNotFoundError(f"resume checkpoint not found: {resume_path}")
+        resume = torch.load(resume_path, map_location="cpu", weights_only=False)
+        model.load_state_dict(resume["model_state_dict"])
+        optimizer.load_state_dict(resume["optimizer_state_dict"])
+        start_epoch = int(resume.get("epoch", 0))
+        best_val_loss = float(resume.get("val_loss", best_val_loss))
+        print(f"Resumed from {resume_path}: epoch={start_epoch}, best_val_loss={best_val_loss:.4f}")
+
     checkpoint_dir = Path(args.checkpoint_dir)
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
-    for epoch in range(args.epochs):
+    if start_epoch >= args.epochs:
+        print(f"Nothing to train: start_epoch={start_epoch} >= epochs={args.epochs}")
+
+    for epoch in range(start_epoch, args.epochs):
         t_epoch = time.time()
         train_loss, train_pl, train_vl = train_epoch(
             model, optimizer, train_t, args.batch_size, device, epoch=epoch,
