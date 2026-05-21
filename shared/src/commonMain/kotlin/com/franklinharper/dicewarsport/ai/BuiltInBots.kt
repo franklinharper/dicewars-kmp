@@ -78,14 +78,46 @@ object BuiltInBots {
     val neural = BuiltInBot(
         id = "neural",
         displayName = "Neural",
-        factory = { random -> NeuralBotFactory.create(random) },
+        factory = { random -> NeuralBotFactory.create(random, modelPathProperty = "dicewars.neural.model") },
         matches = { it is NeuralBot },
     )
 
-    val all: List<BuiltInBot> = listOf(rebel, turtle, bully, emperor, frontierCommander, max, optimus, terminator, terminator2, neural)
+    val neuralA = neuralVariant(id = "neural-a", displayName = "Neural A", modelPathProperty = "dicewars.neural.model.a")
+    val neuralB = neuralVariant(id = "neural-b", displayName = "Neural B", modelPathProperty = "dicewars.neural.model.b")
+    val neuralC = neuralVariant(id = "neural-c", displayName = "Neural C", modelPathProperty = "dicewars.neural.model.c")
+    val neuralD = neuralVariant(id = "neural-d", displayName = "Neural D", modelPathProperty = "dicewars.neural.model.d")
+    val neuralE = neuralVariant(id = "neural-e", displayName = "Neural E", modelPathProperty = "dicewars.neural.model.e")
+    val neuralF = neuralVariant(id = "neural-f", displayName = "Neural F", modelPathProperty = "dicewars.neural.model.f")
+
+    val all: List<BuiltInBot> = listOf(
+        rebel,
+        turtle,
+        bully,
+        emperor,
+        frontierCommander,
+        max,
+        optimus,
+        terminator,
+        terminator2,
+        neural,
+        neuralA,
+        neuralB,
+        neuralC,
+        neuralD,
+        neuralE,
+        neuralF,
+    )
 
     val byId: Map<String, BuiltInBot> = all.associateBy { it.id }
 
     fun idFor(strategy: AiStrategy?): String =
         strategy?.let { ai -> all.firstOrNull { it.matches(ai) }?.id ?: ai.name } ?: "unknown-bot"
+
+    private fun neuralVariant(id: String, displayName: String, modelPathProperty: String): BuiltInBot = BuiltInBot(
+        id = id,
+        displayName = displayName,
+        factory = { random -> NeuralBotFactory.create(random, modelPathProperty = modelPathProperty) },
+        // Variants share the same runtime strategy class; avoid ambiguous idFor matches.
+        matches = { false },
+    )
 }

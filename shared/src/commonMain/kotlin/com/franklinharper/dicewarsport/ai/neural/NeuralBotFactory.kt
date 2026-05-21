@@ -12,5 +12,9 @@ import com.franklinharper.dicewarsport.ai.AiStrategy
  * explaining how to provide one — no silent fallback.
  */
 expect object NeuralBotFactory {
-    fun create(random: RandomSource, config: NeuralBotConfig = NeuralBotConfig.Default): AiStrategy
+    fun create(
+        random: RandomSource,
+        config: NeuralBotConfig = NeuralBotConfig.Default,
+        modelPathProperty: String = "dicewars.neural.model",
+    ): AiStrategy
 }

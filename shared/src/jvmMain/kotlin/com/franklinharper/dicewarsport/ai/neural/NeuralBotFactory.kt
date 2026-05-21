@@ -4,10 +4,14 @@ import com.franklinharper.dicewarsport.RandomSource
 import com.franklinharper.dicewarsport.ai.AiStrategy
 
 actual object NeuralBotFactory {
-    actual fun create(random: RandomSource, config: NeuralBotConfig): AiStrategy {
-        val modelPath = System.getProperty("dicewars.neural.model")
+    actual fun create(
+        random: RandomSource,
+        config: NeuralBotConfig,
+        modelPathProperty: String,
+    ): AiStrategy {
+        val modelPath = System.getProperty(modelPathProperty)
             ?: error(
-                "Neural bot requires a model. Set -Ddicewars.neural.model=<path/to/model.onnx> " +
+                "Neural bot requires a model. Set -D$modelPathProperty=<path/to/model.onnx> " +
                     "when launching the JVM.",
             )
         val model = OnnxNeuralModel(modelPath)
