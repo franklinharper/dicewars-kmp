@@ -109,6 +109,7 @@ def main(argv: list[str] | None = None) -> int:
     optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
 
     best_val_loss = float("inf")
+    best_val_epoch = 0
     start_epoch = 0
     if args.resume_checkpoint:
         resume_path = Path(args.resume_checkpoint)
@@ -119,7 +120,11 @@ def main(argv: list[str] | None = None) -> int:
         optimizer.load_state_dict(resume["optimizer_state_dict"])
         start_epoch = int(resume.get("epoch", 0))
         best_val_loss = float(resume.get("best_val_loss", resume.get("val_loss", best_val_loss)))
-        print(f"Resumed from {resume_path}: epoch={start_epoch}, best_val_loss={best_val_loss:.4f}")
+        best_val_epoch = int(resume.get("best_val_epoch", start_epoch))
+        print(
+            f"Resumed from {resume_path}: epoch={start_epoch}, "
+            f"best_val_loss={best_val_loss:.4f} at epoch={best_val_epoch}"
+        )
 
     checkpoint_dir = Path(args.checkpoint_dir)
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
@@ -152,15 +157,20 @@ def main(argv: list[str] | None = None) -> int:
             f"| {t_val - t_epoch:.1f}s"
         )
 
+        is_new_best = val_loss < best_val_loss
+        if is_new_best:
+            best_val_loss = val_loss
+            best_val_epoch = epoch + 1
+
         # Save the underlying model (unwrap compiled)
         state_model = model._orig_mod if hasattr(model, "_orig_mod") else model
-        next_best_val_loss = min(best_val_loss, val_loss)
         checkpoint_payload = {
             "epoch": epoch + 1,
             "model_state_dict": state_model.state_dict(),
             "optimizer_state_dict": optimizer.state_dict(),
             "val_loss": val_loss,
-            "best_val_loss": next_best_val_loss,
+            "best_val_loss": best_val_loss,
+            "best_val_epoch": best_val_epoch,
             "config": {
                 "node_feature_count": config.node_feature_count,
                 "global_feature_count": config.global_feature_count,
@@ -173,12 +183,13 @@ def main(argv: list[str] | None = None) -> int:
         latest_path = checkpoint_dir / "latest.pt"
         torch.save(checkpoint_payload, latest_path)
 
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
+        if is_new_best:
             best_path = checkpoint_dir / "best.pt"
             torch.save(checkpoint_payload, best_path)
 
     print()
+    if best_val_epoch > 0:
+        print(f"Best val loss {best_val_loss:.4f} achieved at epoch {best_val_epoch}")
 
     # Export ONNX if requested
     if args.export_onnx:
