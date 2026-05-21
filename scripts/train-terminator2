@@ -15,22 +15,27 @@ DATA_PATH="$ROOT_DIR/training/data/imitation-v1.jsonl.gz"
 CACHE_PATH="$ROOT_DIR/training/cache/imitation-v1-terminator2.pt"
 CHECKPOINT_DIR="$ROOT_DIR/training/checkpoints/imitation-terminator2"
 MODEL_PATH="$ROOT_DIR/models/neural-v1-terminator2.onnx"
-RESUME_PATH="$CHECKPOINT_DIR/best.pt"
+RESUME_PATH_LATEST="$CHECKPOINT_DIR/latest.pt"
+RESUME_PATH_BEST="$CHECKPOINT_DIR/best.pt"
 
 source "$VENV_ACTIVATE"
 
 EXTRA_ARGS=("$@")
-if [[ -f "$RESUME_PATH" ]]; then
-  HAS_RESUME_FLAG=0
-  for arg in "$@"; do
-    if [[ "$arg" == "--resume-checkpoint" ]]; then
-      HAS_RESUME_FLAG=1
-      break
-    fi
-  done
-  if [[ "$HAS_RESUME_FLAG" -eq 0 ]]; then
-    EXTRA_ARGS+=("--resume-checkpoint" "$RESUME_PATH")
-    echo "Resuming from: $RESUME_PATH"
+HAS_RESUME_FLAG=0
+for arg in "$@"; do
+  if [[ "$arg" == "--resume-checkpoint" ]]; then
+    HAS_RESUME_FLAG=1
+    break
+  fi
+done
+
+if [[ "$HAS_RESUME_FLAG" -eq 0 ]]; then
+  if [[ -f "$RESUME_PATH_LATEST" ]]; then
+    EXTRA_ARGS+=("--resume-checkpoint" "$RESUME_PATH_LATEST")
+    echo "Resuming from latest: $RESUME_PATH_LATEST"
+  elif [[ -f "$RESUME_PATH_BEST" ]]; then
+    EXTRA_ARGS+=("--resume-checkpoint" "$RESUME_PATH_BEST")
+    echo "Resuming from best: $RESUME_PATH_BEST"
   fi
 fi
 

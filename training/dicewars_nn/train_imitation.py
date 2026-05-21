@@ -118,7 +118,7 @@ def main(argv: list[str] | None = None) -> int:
         model.load_state_dict(resume["model_state_dict"])
         optimizer.load_state_dict(resume["optimizer_state_dict"])
         start_epoch = int(resume.get("epoch", 0))
-        best_val_loss = float(resume.get("val_loss", best_val_loss))
+        best_val_loss = float(resume.get("best_val_loss", resume.get("val_loss", best_val_loss)))
         print(f"Resumed from {resume_path}: epoch={start_epoch}, best_val_loss={best_val_loss:.4f}")
 
     checkpoint_dir = Path(args.checkpoint_dir)
@@ -152,24 +152,31 @@ def main(argv: list[str] | None = None) -> int:
             f"| {t_val - t_epoch:.1f}s"
         )
 
+        # Save the underlying model (unwrap compiled)
+        state_model = model._orig_mod if hasattr(model, "_orig_mod") else model
+        next_best_val_loss = min(best_val_loss, val_loss)
+        checkpoint_payload = {
+            "epoch": epoch + 1,
+            "model_state_dict": state_model.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
+            "val_loss": val_loss,
+            "best_val_loss": next_best_val_loss,
+            "config": {
+                "node_feature_count": config.node_feature_count,
+                "global_feature_count": config.global_feature_count,
+                "hidden_size": config.hidden_size,
+                "message_passing_layers": config.message_passing_layers,
+                "action_count": config.action_count,
+            },
+        }
+        # Always persist latest progress for reliable resume.
+        latest_path = checkpoint_dir / "latest.pt"
+        torch.save(checkpoint_payload, latest_path)
+
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             best_path = checkpoint_dir / "best.pt"
-            # Save the underlying model (unwrap compiled)
-            state_model = model._orig_mod if hasattr(model, "_orig_mod") else model
-            torch.save({
-                "epoch": epoch + 1,
-                "model_state_dict": state_model.state_dict(),
-                "optimizer_state_dict": optimizer.state_dict(),
-                "val_loss": val_loss,
-                "config": {
-                    "node_feature_count": config.node_feature_count,
-                    "global_feature_count": config.global_feature_count,
-                    "hidden_size": config.hidden_size,
-                    "message_passing_layers": config.message_passing_layers,
-                    "action_count": config.action_count,
-                },
-            }, best_path)
+            torch.save(checkpoint_payload, best_path)
 
     print()
 

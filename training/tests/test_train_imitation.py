@@ -60,8 +60,8 @@ class TrainImitationTest(unittest.TestCase):
                 "--checkpoint-dir", str(ckpt_dir),
             ])
             self.assertEqual(0, first_exit)
-            resume_path = ckpt_dir / "best.pt"
-            self.assertTrue(resume_path.exists(), "Checkpoint should exist after first run")
+            resume_path = ckpt_dir / "latest.pt"
+            self.assertTrue(resume_path.exists(), "Latest checkpoint should exist after first run")
 
             second_exit = main([
                 str(path),
