@@ -17,6 +17,7 @@ GENERATION=""
 ROUNDS=10000
 SEED=""
 DRY_RUN=0
+PROMOTE_ONLY_IF_SCORE_GAIN=0
 
 usage() {
   cat <<EOF
@@ -27,11 +28,15 @@ Options:
   --rounds <count>    Tournament rounds (default: 10000)
   --seed <int>        Tournament seed (optional)
   --dry-run           Print commands only
+  --promote-only-if-score-gain <pts>
+                      Promote only if best score >= previous_score + pts (default: 0)
   --help              Show this help
 
 Environment:
   EVOLVE_PARENT_CHECKPOINT  Optional parent checkpoint (.pt) for fine-tuning
                             default: training/checkpoints/imitation-terminator2/latest.pt
+  EVOLVE_CHAMPION_MODEL     Optional champion ONNX model path
+                            default: models/neuralbot/current/model.onnx
 EOF
 }
 
@@ -45,6 +50,8 @@ while [[ $# -gt 0 ]]; do
       SEED="$2"; shift 2 ;;
     --dry-run)
       DRY_RUN=1; shift ;;
+    --promote-only-if-score-gain)
+      PROMOTE_ONLY_IF_SCORE_GAIN="$2"; shift 2 ;;
     --help)
       usage; exit 0 ;;
     *)
@@ -60,10 +67,29 @@ if [[ -z "$GENERATION" ]]; then
   exit 1
 fi
 
+if ! [[ "$PROMOTE_ONLY_IF_SCORE_GAIN" =~ ^-?[0-9]+$ ]]; then
+  echo "--promote-only-if-score-gain must be an integer" >&2
+  exit 1
+fi
+if [[ "$PROMOTE_ONLY_IF_SCORE_GAIN" -lt 0 ]]; then
+  echo "--promote-only-if-score-gain must be >= 0" >&2
+  exit 1
+fi
+
 PARENT_CHECKPOINT="${EVOLVE_PARENT_CHECKPOINT:-$ROOT_DIR/training/checkpoints/imitation-terminator2/latest.pt}"
 if [[ ! -f "$PARENT_CHECKPOINT" ]]; then
   echo "Parent checkpoint not found: $PARENT_CHECKPOINT" >&2
   echo "Set EVOLVE_PARENT_CHECKPOINT to a valid checkpoint path." >&2
+  exit 1
+fi
+
+CHAMPION_MODEL="${EVOLVE_CHAMPION_MODEL:-$ROOT_DIR/models/neuralbot/current/model.onnx}"
+if [[ ! -f "$CHAMPION_MODEL" && -f "$ROOT_DIR/models/neural-v1-terminator2.onnx" ]]; then
+  CHAMPION_MODEL="$ROOT_DIR/models/neural-v1-terminator2.onnx"
+fi
+if [[ ! -f "$CHAMPION_MODEL" ]]; then
+  echo "Champion model not found: $CHAMPION_MODEL" >&2
+  echo "Set EVOLVE_CHAMPION_MODEL to a valid ONNX model path." >&2
   exit 1
 fi
 
@@ -114,8 +140,11 @@ run_cmd() {
 
 source "$VENV_ACTIVATE"
 
-# Train/export variants A..F
-for key in a b c d e f; do
+# Champion occupies neural-a; train/export mutant variants neural-b..neural-f
+echo "=== Champion neural-a: $CHAMPION_MODEL ==="
+run_cmd "cp '$CHAMPION_MODEL' '$OUT_DIR/neural-a.onnx'"
+
+for key in b c d e f; do
   variant="neural-$key"
   lr="$(variant_lr "$key")"
   epochs="$(variant_epochs "$key")"
@@ -160,51 +189,77 @@ if [[ "$DRY_RUN" -eq 1 ]]; then
   exit 0
 fi
 
-# Pick best neural variant by tournament score
-BEST_LINE=$(python3 - "$TOURNAMENT_REPORT" <<'PY'
+# Parse champion score (Neural A) and best mutant score (Neural B..F)
+SELECTION_LINE=$(python3 - "$TOURNAMENT_REPORT" <<'PY'
 import re, sys
 text = open(sys.argv[1], 'r', encoding='utf-8').read().splitlines()
-best = None
+scores = {}
 for line in text:
-    m = re.match(r'^\s*\d+\.\s+(Neural\s+[A-F])\s+([0-9,]+)\s+pts', line)
+    m = re.match(r'^\s*\d+\.\s+Neural\s+([A-F])\s+([0-9,]+)\s+pts', line)
     if not m:
         continue
-    name = m.group(1)
+    key = m.group(1).lower()
     score = int(m.group(2).replace(',', ''))
-    if best is None or score > best[1]:
-        best = (name, score)
-if best is None:
-    raise SystemExit('No neural score lines found in tournament report')
-print(f"{best[0]}|{best[1]}")
+    scores[key] = score
+if 'a' not in scores:
+    raise SystemExit('Missing Neural A (champion) score in tournament report')
+mutants = {k: v for k, v in scores.items() if k in 'bcdef'}
+if not mutants:
+    raise SystemExit('No mutant neural scores found in tournament report')
+best_key, best_score = max(mutants.items(), key=lambda kv: kv[1])
+print(f"{scores['a']}|{best_key}|{best_score}")
 PY
 )
 
-BEST_NAME="${BEST_LINE%%|*}"      # e.g. Neural C
-BEST_SCORE="${BEST_LINE##*|}"
-BEST_KEY=$(echo "$BEST_NAME" | awk '{print tolower($2)}')
+CHAMPION_SCORE="${SELECTION_LINE%%|*}"
+REST="${SELECTION_LINE#*|}"
+BEST_KEY="${REST%%|*}"
+BEST_SCORE="${REST##*|}"
 BEST_VARIANT="neural-$BEST_KEY"
 BEST_MODEL="$OUT_DIR/$BEST_VARIANT.onnx"
 BEST_CKPT_DIR="$ROOT_DIR/training/checkpoints/evolution/$GENERATION/$BEST_VARIANT"
 BEST_CKPT="$BEST_CKPT_DIR/latest.pt"
 
+REQUIRED_SCORE=$((CHAMPION_SCORE + PROMOTE_ONLY_IF_SCORE_GAIN))
+PROMOTED=0
+PROMOTION_REASON=""
+if [[ "$BEST_SCORE" -ge "$REQUIRED_SCORE" ]]; then
+  PROMOTED=1
+  PROMOTION_REASON="best_mutant_score >= champion_score + gain"
+else
+  PROMOTION_REASON="best_mutant_score < champion_score + gain"
+fi
+
 CURRENT_DIR="$ROOT_DIR/models/neuralbot/current"
 mkdir -p "$CURRENT_DIR"
-cp "$BEST_MODEL" "$CURRENT_DIR/model.onnx"
-if [[ -f "$BEST_CKPT" ]]; then
-  cp "$BEST_CKPT" "$CURRENT_DIR/latest.pt"
+if [[ "$PROMOTED" -eq 1 ]]; then
+  cp "$BEST_MODEL" "$CURRENT_DIR/model.onnx"
+  if [[ -f "$BEST_CKPT" ]]; then
+    cp "$BEST_CKPT" "$CURRENT_DIR/latest.pt"
+  fi
+  printf '%s\n' "$GENERATION/$BEST_VARIANT" > "$ROOT_DIR/models/neuralbot/current.txt"
 fi
-printf '%s\n' "$GENERATION/$BEST_VARIANT" > "$ROOT_DIR/models/neuralbot/current.txt"
 
 cat > "$REPORT_DIR/selection.txt" <<EOF
 generation: $GENERATION
 rounds: $ROUNDS
 seed: ${SEED:-none}
-best_variant: $BEST_VARIANT
-best_score: $BEST_SCORE
+champion_variant: neural-a
+champion_score: $CHAMPION_SCORE
+best_mutant_variant: $BEST_VARIANT
+best_mutant_score: $BEST_SCORE
+promote_only_if_score_gain: $PROMOTE_ONLY_IF_SCORE_GAIN
+required_score_for_promotion: $REQUIRED_SCORE
+promoted: $PROMOTED
+promotion_reason: $PROMOTION_REASON
 source_model: $BEST_MODEL
-current_pointer: models/neuralbot/current.txt -> $GENERATION/$BEST_VARIANT
 EOF
 
 echo "=== Selection complete ==="
-echo "Best variant: $BEST_VARIANT ($BEST_SCORE pts)"
-echo "Promoted to: $CURRENT_DIR/model.onnx"
+echo "Champion score: $CHAMPION_SCORE"
+echo "Best mutant: $BEST_VARIANT ($BEST_SCORE pts)"
+if [[ "$PROMOTED" -eq 1 ]]; then
+  echo "Promoted to: $CURRENT_DIR/model.onnx"
+else
+  echo "Champion retained (no promotion)."
+fi
