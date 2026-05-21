@@ -11,6 +11,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowInsetsControllerCompat
 import com.franklinharper.dicewarsport.App
+import com.franklinharper.dicewarsport.ai.neural.AndroidNeuralRuntime
 
 
 class AppActivity : ComponentActivity() {
@@ -20,6 +21,7 @@ class AppActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        AndroidNeuralRuntime.initialize(applicationContext)
         val player = AndroidSoundPlayer(this)
         soundPlayer = player
         val debugPrefs = AndroidDebugPreferences(this)

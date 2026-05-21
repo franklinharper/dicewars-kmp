@@ -40,6 +40,7 @@ kotlin {
         }
 
         androidMain.dependencies {
+            implementation(libs.onnxruntime.android)
         }
 
         jvmMain.dependencies {
@@ -69,7 +70,7 @@ android {
     namespace = "com.franklinharper.dicewarsport"
     compileSdk = 36
     defaultConfig {
-        minSdk = 23
+        minSdk = 24
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
