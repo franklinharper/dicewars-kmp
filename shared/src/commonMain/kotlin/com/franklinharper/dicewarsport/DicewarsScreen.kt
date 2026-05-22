@@ -9,4 +9,5 @@ enum class DicewarsScreen(val soundEvents: List<SoundEvent> = emptyList()) {
     Win(soundEvents = listOf(SoundEvent.WIN)),
     Stats,
     Debug,
+    SelectBots,
 }

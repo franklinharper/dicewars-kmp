@@ -21,4 +21,5 @@ data class GameUiState(
     val statsReturnScreen: DicewarsScreen = DicewarsScreen.Title,
     val humanAutoplayEnabled: Boolean = false,
     val resolvingAfterHumanEliminated: Boolean = false,
+    val selectedDebugBotIds: Set<String> = emptySet(),
 )

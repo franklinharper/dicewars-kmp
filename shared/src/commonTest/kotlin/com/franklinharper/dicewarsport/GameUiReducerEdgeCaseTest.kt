@@ -138,5 +138,7 @@ class GameUiReducerEdgeCaseTest {
         override fun setDebugMode(enabled: Boolean) {
             this.enabled = enabled
         }
+        override fun selectedBotIds(): Set<String> = emptySet()
+        override fun setSelectedBotIds(ids: Set<String>) {}
     }
 }

@@ -5,11 +5,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -24,30 +30,20 @@ fun DebugScreen(state: GameUiState, onAction: (GameAction) -> Unit) = ScreenScaf
     showBackButton = true,
     onBack = { onAction(GameAction.BackToTitle) },
 ) {
+    var showScreenDialog by remember { mutableStateOf(false) }
+
     Column(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Button(
-            onClick = { onAction(GameAction.ShowDebugScreen(DicewarsScreen.Win)) },
+            onClick = { showScreenDialog = true },
             modifier = Modifier.fillMaxWidth(),
-        ) { Text("Show Win Screen") }
+        ) { Text("Show Screen") }
         Button(
-            onClick = { onAction(GameAction.ShowDebugScreen(DicewarsScreen.GameOver)) },
+            onClick = { onAction(GameAction.GoToSelectBots) },
             modifier = Modifier.fillMaxWidth(),
-        ) { Text("Show Game Over Screen") }
-        Button(
-            onClick = { onAction(GameAction.ShowDebugScreen(DicewarsScreen.HumanTurn)) },
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text("Show Human Turn") }
-        Button(
-            onClick = { onAction(GameAction.ShowDebugScreen(DicewarsScreen.AiTurn)) },
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text("Show AI Turn") }
-        Button(
-            onClick = { onAction(GameAction.ShowDebugScreen(DicewarsScreen.Title)) },
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text("Show Title Screen") }
+        ) { Text("Select Bots") }
         Spacer(Modifier.height(16.dp))
         Button(
             onClick = { onAction(GameAction.DisableDebugMode) },
@@ -58,4 +54,42 @@ fun DebugScreen(state: GameUiState, onAction: (GameAction) -> Unit) = ScreenScaf
             ),
         ) { Text("Disable Debug Mode") }
     }
+
+    if (showScreenDialog) {
+        AlertDialog(
+            onDismissRequest = { showScreenDialog = false },
+            title = { Text("Show Screen") },
+            text = {
+                Column {
+                    debugScreenOptions.forEach { option ->
+                        TextButton(
+                            onClick = {
+                                showScreenDialog = false
+                                onAction(GameAction.ShowDebugScreen(option.screen))
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text(option.label) }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showScreenDialog = false }) {
+                    Text("Cancel")
+                }
+            },
+        )
+    }
 }
+
+private data class DebugScreenOption(
+    val screen: DicewarsScreen,
+    val label: String,
+)
+
+private val debugScreenOptions = listOf(
+    DebugScreenOption(DicewarsScreen.Win, "Win Screen"),
+    DebugScreenOption(DicewarsScreen.GameOver, "Game Over Screen"),
+    DebugScreenOption(DicewarsScreen.HumanTurn, "Human Turn"),
+    DebugScreenOption(DicewarsScreen.AiTurn, "AI Turn"),
+)

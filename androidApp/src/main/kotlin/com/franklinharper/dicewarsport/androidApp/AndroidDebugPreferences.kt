@@ -12,4 +12,10 @@ class AndroidDebugPreferences(context: Context) : DebugPreferences {
     override fun setDebugMode(enabled: Boolean) {
         prefs.edit().putBoolean("debug_mode", enabled).apply()
     }
+
+    override fun selectedBotIds(): Set<String> = prefs.getStringSet("selected_bot_ids", emptySet()).orEmpty()
+
+    override fun setSelectedBotIds(ids: Set<String>) {
+        prefs.edit().putStringSet("selected_bot_ids", ids).apply()
+    }
 }

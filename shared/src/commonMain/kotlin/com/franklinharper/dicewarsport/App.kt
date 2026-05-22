@@ -69,6 +69,7 @@ fun DicewarsApp(
         DicewarsScreen.Win -> WinScreen(state, onAction)
         DicewarsScreen.Stats -> StatsScreen(state, onAction)
         DicewarsScreen.Debug -> DebugScreen(state, onAction)
+        DicewarsScreen.SelectBots -> SelectBotsScreen(state, onAction)
     }
 }
 

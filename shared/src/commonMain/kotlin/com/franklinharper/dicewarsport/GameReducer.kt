@@ -12,9 +12,8 @@ class GameReducer(
 ) {
     private var activeAiStrategies: Map<Int, AiStrategy> = emptyMap()
 
-    private val availableAiBots = BuiltInBots.all
-
     private fun assignAiStrategiesFor(game: DicewarsGame, spectateMode: Boolean): Map<Int, AiStrategy> {
+        val availableAiBots = if (spectateMode) BuiltInBots.all else selectedAiBotsForHumanGame()
         val assigned = mutableMapOf<Int, AiStrategy>()
         for (p in 0 until game.pmax) {
             if (!spectateMode && p == game.user) continue
@@ -23,6 +22,12 @@ class GameReducer(
         }
         activeAiStrategies = assigned
         return assigned
+    }
+
+    private fun selectedAiBotsForHumanGame(): List<com.franklinharper.dicewarsport.ai.BuiltInBot> {
+        val selectedIds = debugPreferences.selectedBotIds()
+        val selectedBots = BuiltInBots.all.filter { it.id in selectedIds }
+        return selectedBots.ifEmpty { BuiltInBots.all }
     }
 
     private fun playerNamesFor(game: DicewarsGame, spectateMode: Boolean, assignedAiStrategies: Map<Int, AiStrategy>): Map<Int, String> {
@@ -63,7 +68,8 @@ class GameReducer(
     fun reduce(state: GameUiState, action: GameAction): Result = when (action) {
         GameAction.LoadingFinished -> {
             val debugMode = debugPreferences.isDebugMode()
-            Result(state.copy(screen = DicewarsScreen.Title, debugMode = debugMode, playerStatsHistory = playerStatsStore.load()))
+            val selectedBotIds = debugPreferences.selectedBotIds().ifEmpty { BuiltInBots.all.map { it.id }.toSet() }
+            Result(state.copy(screen = DicewarsScreen.Title, debugMode = debugMode, playerStatsHistory = playerStatsStore.load(), selectedDebugBotIds = selectedBotIds))
         }
         is GameAction.SelectPlayerCount -> Result(
             state.copy(selectedPlayerCount = action.count),
@@ -99,7 +105,12 @@ class GameReducer(
         }
         GameAction.TitleTapped -> onTitleTapped(state)
         GameAction.GoToDebug -> Result(state.copy(screen = DicewarsScreen.Debug))
+        GameAction.GoToSelectBots -> Result(state.copy(screen = DicewarsScreen.SelectBots))
         is GameAction.ShowDebugScreen -> onShowDebugScreen(state, action.screen)
+        is GameAction.SelectDebugBots -> {
+            debugPreferences.setSelectedBotIds(action.botIds)
+            Result(state.copy(selectedDebugBotIds = action.botIds, screen = DicewarsScreen.Debug))
+        }
         GameAction.DisableDebugMode -> {
             debugPreferences.setDebugMode(false)
             Result(state.copy(debugMode = false, screen = DicewarsScreen.Title))

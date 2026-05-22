@@ -324,6 +324,8 @@ private fun reducer(): GameReducer = GameReducer(
         private var mode = false
         override fun isDebugMode(): Boolean = mode
         override fun setDebugMode(enabled: Boolean) { mode = enabled }
+        override fun selectedBotIds(): Set<String> = emptySet()
+        override fun setSelectedBotIds(ids: Set<String>) {}
     },
 )
 

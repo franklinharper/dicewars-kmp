@@ -21,6 +21,8 @@ sealed interface GameAction {
     data object ResetStatsCancelled : GameAction
     data object ResetStatsConfirmed : GameAction
     data object GoToDebug : GameAction
+    data object GoToSelectBots : GameAction
     data class ShowDebugScreen(val screen: DicewarsScreen) : GameAction
+    data class SelectDebugBots(val botIds: Set<String>) : GameAction
     data object DisableDebugMode : GameAction
 }
