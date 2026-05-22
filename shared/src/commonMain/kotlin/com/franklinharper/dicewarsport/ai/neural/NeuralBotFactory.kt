@@ -15,6 +15,5 @@ expect object NeuralBotFactory {
     fun create(
         random: RandomSource,
         config: NeuralBotConfig = NeuralBotConfig.Default,
-        modelPathProperty: String = "dicewars.neural.model",
     ): AiStrategy
 }

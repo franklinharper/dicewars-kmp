@@ -58,10 +58,4 @@ else
   printf '%s' "$CURRENT_HASH" > "$HASH_FILE"
 fi
 
-JAVA_OPTS_ARRAY=()
-if [[ -n "${DICEWARS_TOURNAMENT_JAVA_OPTS:-}" ]]; then
-  # shellcheck disable=SC2206
-  JAVA_OPTS_ARRAY=(${DICEWARS_TOURNAMENT_JAVA_OPTS})
-fi
-
-exec java "${JAVA_OPTS_ARRAY[@]}" -jar "$JAR_FILE" "$@"
+exec java -jar "$JAR_FILE" "$@"

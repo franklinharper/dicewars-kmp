@@ -31,7 +31,12 @@ fun SelectBotsScreen(state: GameUiState, onAction: (GameAction) -> Unit) = Scree
     onBack = { onAction(GameAction.GoToDebug) },
 ) {
     var selectedBotIds by remember(state.selectedDebugBotIds) {
-        mutableStateOf(state.selectedDebugBotIds.ifEmpty { BuiltInBots.all.map { it.id }.toSet() })
+        mutableStateOf(
+            state.selectedDebugBotIds
+                .filter { it in BuiltInBots.byId }
+                .toSet()
+                .ifEmpty { BuiltInBots.all.map { it.id }.toSet() },
+        )
     }
 
     Column(

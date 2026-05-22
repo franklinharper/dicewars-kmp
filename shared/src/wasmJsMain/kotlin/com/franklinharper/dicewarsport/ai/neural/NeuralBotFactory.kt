@@ -7,7 +7,6 @@ actual object NeuralBotFactory {
     actual fun create(
         random: RandomSource,
         config: NeuralBotConfig,
-        modelPathProperty: String,
     ): AiStrategy {
         error("Neural bot is not yet supported on wasmJs.")
     }
