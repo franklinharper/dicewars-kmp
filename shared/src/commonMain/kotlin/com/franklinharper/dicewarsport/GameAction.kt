@@ -23,6 +23,7 @@ sealed interface GameAction {
     data object GoToDebug : GameAction
     data object GoToSelectBots : GameAction
     data class ShowDebugScreen(val screen: DicewarsScreen) : GameAction
+    data object ShowDebugHumanEliminatedGame : GameAction
     data class SelectDebugBots(val botIds: Set<String>) : GameAction
     data object DisableDebugMode : GameAction
 }

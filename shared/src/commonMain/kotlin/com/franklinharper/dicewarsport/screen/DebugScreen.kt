@@ -65,7 +65,7 @@ fun DebugScreen(state: GameUiState, onAction: (GameAction) -> Unit) = ScreenScaf
                         TextButton(
                             onClick = {
                                 showScreenDialog = false
-                                onAction(GameAction.ShowDebugScreen(option.screen))
+                                onAction(option.action)
                             },
                             modifier = Modifier.fillMaxWidth(),
                         ) { Text(option.label) }
@@ -83,13 +83,14 @@ fun DebugScreen(state: GameUiState, onAction: (GameAction) -> Unit) = ScreenScaf
 }
 
 private data class DebugScreenOption(
-    val screen: DicewarsScreen,
     val label: String,
+    val action: GameAction,
 )
 
 private val debugScreenOptions = listOf(
-    DebugScreenOption(DicewarsScreen.Win, "Win Screen"),
-    DebugScreenOption(DicewarsScreen.GameOver, "Game Over Screen"),
-    DebugScreenOption(DicewarsScreen.HumanTurn, "Human Turn"),
-    DebugScreenOption(DicewarsScreen.AiTurn, "AI Turn"),
+    DebugScreenOption("Win Screen", GameAction.ShowDebugScreen(DicewarsScreen.Win)),
+    DebugScreenOption("Game Over Screen", GameAction.ShowDebugScreen(DicewarsScreen.GameOver)),
+    DebugScreenOption("Human Turn", GameAction.ShowDebugScreen(DicewarsScreen.HumanTurn)),
+    DebugScreenOption("AI Turn", GameAction.ShowDebugScreen(DicewarsScreen.AiTurn)),
+    DebugScreenOption("Human Eliminated", GameAction.ShowDebugHumanEliminatedGame),
 )

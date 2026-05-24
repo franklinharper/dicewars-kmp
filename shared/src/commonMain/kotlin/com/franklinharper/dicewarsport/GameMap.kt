@@ -1,5 +1,8 @@
 package com.franklinharper.dicewarsport
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class CellNeighbors(
     val directions: List<Int>,
 )

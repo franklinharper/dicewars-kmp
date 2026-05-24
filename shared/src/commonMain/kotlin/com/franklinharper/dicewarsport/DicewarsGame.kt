@@ -1,5 +1,8 @@
 package com.franklinharper.dicewarsport
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class DicewarsGame(
     val pmax: Int = 7,
     val user: Int = 0,

@@ -1,5 +1,8 @@
 package com.franklinharper.dicewarsport
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 enum class DicewarsScreen(val soundEvents: List<SoundEvent> = emptyList()) {
     Loading,
     Title,

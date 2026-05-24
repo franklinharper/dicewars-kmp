@@ -66,7 +66,7 @@ fun GameBoardScreen(state: GameUiState, onAction: (GameAction) -> Unit, title: S
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text(
-                    text = "You have been eliminated. Bots are finishing the game.",
+                    text = "You have been eliminated.\nBots are finishing the game.",
                     style = MaterialTheme.typography.titleMedium,
                     textAlign = TextAlign.Center,
                 )

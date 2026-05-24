@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.android.kmp.library)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.compose.multiplatform)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 kotlin {
@@ -32,6 +33,7 @@ kotlin {
             api(libs.compose.ui.tooling.preview)
             api(libs.compose.material3)
             api(compose.materialIconsExtended)
+            implementation(libs.kotlinx.serialization.json)
         }
 
         commonTest.dependencies {

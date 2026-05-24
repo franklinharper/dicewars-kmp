@@ -1,5 +1,8 @@
 package com.franklinharper.dicewarsport
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class AreaData(
     val size: Int = 0,
     val centerPos: Int = 0,
@@ -17,6 +20,7 @@ data class AreaData(
     val adjacentAreas: List<Int> = List(DicewarsGame.AREA_MAX) { 0 },
 )
 
+@Serializable
 data class PlayerData(
     val areaCount: Int = 0,
     val maxConnectedAreaCount: Int = 0,
@@ -25,6 +29,7 @@ data class PlayerData(
     val stock: Int = 0,
 )
 
+@Serializable
 data class HistoryData(
     val from: Int = 0,
     val to: Int = 0,

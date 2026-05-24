@@ -18,12 +18,15 @@ fun App(
     soundPlayer: SoundPlayer = NoOpSoundPlayer(),
     debugPreferences: DebugPreferences = NoOpDebugPreferences(),
     playerStatsStore: PlayerStatsStore = InMemoryPlayerStatsStore(),
+    gameStateStore: GameStateStore = NoOpGameStateStore(),
     backGestureHandler: @Composable (enabled: Boolean, onBack: () -> Unit) -> Unit = { _, _ -> },
 ) = AppTheme(onThemeChanged) {
     val random = remember { KotlinRandomSource() }
     val reducer = remember { GameReducer(random, debugPreferences = debugPreferences, playerStatsStore = playerStatsStore) }
     var state by remember {
-        mutableStateOf(GameUiState(screen = DicewarsScreen.Loading, game = DicewarsGame(), playerStatsHistory = playerStatsStore.load()))
+        val playerStatsHistory = playerStatsStore.load()
+        val restoredState = gameStateStore.load()?.let { reducer.restore(it, playerStatsHistory) }
+        mutableStateOf(restoredState ?: GameUiState(screen = DicewarsScreen.Loading, game = DicewarsGame(), playerStatsHistory = playerStatsHistory))
     }
     val screenBackStack = remember { mutableStateListOf<DicewarsScreen>() }
 
@@ -35,6 +38,7 @@ fun App(
             screenBackStack += oldScreen
         }
         state = result.state
+        SavedGameState.fromUiState(state)?.let { gameStateStore.save(it) }
         if (state.soundEnabled) {
             result.soundEvents.forEach { soundPlayer.play(it) }
         }

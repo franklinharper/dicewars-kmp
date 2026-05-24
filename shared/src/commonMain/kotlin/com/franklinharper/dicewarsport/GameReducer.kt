@@ -36,6 +36,41 @@ class GameReducer(
         return selectedIds.ifEmpty { knownIds }
     }
 
+    fun restore(saved: SavedGameState, playerStatsHistory: PlayerStatsHistory): GameUiState {
+        val assignedAiStrategies = restoreAiStrategiesFor(saved.game, saved.spectateMode, saved.playerIds)
+        return GameUiState(
+            screen = saved.screen,
+            game = saved.game,
+            selectedFrom = saved.selectedFrom,
+            selectedTo = saved.selectedTo,
+            spectateMode = saved.spectateMode,
+            selectedPlayerCount = saved.selectedPlayerCount,
+            soundEnabled = saved.soundEnabled,
+            debugMode = saved.debugMode,
+            playerNames = saved.playerNames.ifEmpty { playerNamesFor(saved.game, saved.spectateMode, assignedAiStrategies) },
+            playerIds = saved.playerIds.ifEmpty { playerIdsFor(saved.game, saved.spectateMode, assignedAiStrategies) },
+            playerStatsHistory = playerStatsHistory,
+            eliminatedPlayerIds = saved.eliminatedPlayerIds,
+            eliminatedPlayerSeats = saved.eliminatedPlayerSeats,
+            gameStatsRecorded = saved.gameStatsRecorded,
+            humanAutoplayEnabled = saved.humanAutoplayEnabled,
+            resolvingAfterHumanEliminated = saved.resolvingAfterHumanEliminated,
+            selectedDebugBotIds = selectedBotIdsOrDefault(saved.selectedDebugBotIds),
+        )
+    }
+
+    private fun restoreAiStrategiesFor(game: DicewarsGame, spectateMode: Boolean, playerIds: Map<Int, String>): Map<Int, AiStrategy> {
+        val fallbackBots = if (spectateMode) BuiltInBots.all else selectedAiBotsForHumanGame()
+        val assigned = mutableMapOf<Int, AiStrategy>()
+        for (p in 0 until game.pmax) {
+            if (!spectateMode && p == game.user) continue
+            val bot = BuiltInBots.byId[playerIds[p]] ?: fallbackBots[random.nextInt(fallbackBots.size)]
+            assigned[p] = bot.factory(random)
+        }
+        activeAiStrategies = assigned
+        return assigned
+    }
+
     private fun playerNamesFor(game: DicewarsGame, spectateMode: Boolean, assignedAiStrategies: Map<Int, AiStrategy>): Map<Int, String> {
         val names = mutableMapOf<Int, String>()
         for (p in 0 until game.pmax) {
@@ -113,6 +148,7 @@ class GameReducer(
         GameAction.GoToDebug -> Result(state.copy(screen = DicewarsScreen.Debug))
         GameAction.GoToSelectBots -> Result(state.copy(screen = DicewarsScreen.SelectBots))
         is GameAction.ShowDebugScreen -> onShowDebugScreen(state, action.screen)
+        GameAction.ShowDebugHumanEliminatedGame -> onShowDebugHumanEliminatedGame(state)
         is GameAction.SelectDebugBots -> {
             val selectedBotIds = selectedBotIdsOrDefault(action.botIds)
             debugPreferences.setSelectedBotIds(selectedBotIds)
@@ -385,6 +421,41 @@ class GameReducer(
                 playerNames = if (needsGame) playerNamesFor(game, state.spectateMode, assignedAiStrategies) else state.playerNames,
             ),
             targetScreen.soundEvents,
+        )
+    }
+
+    private fun onShowDebugHumanEliminatedGame(state: GameUiState): Result {
+        val playerCount = maxOf(2, state.selectedPlayerCount)
+        val generated = DicewarsGame.generate(playerCount, random)
+        val opponent = (0 until generated.pmax).first { it != generated.user }
+        val transferredAreas = generated.areas.map { area ->
+            if (area.size > 0 && area.owner == generated.user) area.copy(owner = opponent) else area
+        }
+        val recalculated = (0 until generated.pmax).fold(
+            generated.copy(
+                areas = transferredAreas,
+                turnIndex = generated.turnOrder.indexOf(opponent).takeIf { it >= 0 } ?: 0,
+            ),
+        ) { game, player -> game.setAreaTc(player) }
+        val assignedAiStrategies = assignAiStrategiesFor(recalculated, spectateMode = false)
+
+        return Result(
+            state.copy(
+                screen = DicewarsScreen.AiTurn,
+                game = recalculated,
+                spectateMode = false,
+                selectedFrom = null,
+                selectedTo = null,
+                playerNames = playerNamesFor(recalculated, spectateMode = false, assignedAiStrategies),
+                playerIds = playerIdsFor(recalculated, spectateMode = false, assignedAiStrategies),
+                eliminatedPlayerIds = listOf("human"),
+                eliminatedPlayerSeats = listOf(recalculated.user),
+                gameStatsRecorded = false,
+                confirmResetStats = false,
+                humanAutoplayEnabled = false,
+                resolvingAfterHumanEliminated = true,
+            ),
+            DicewarsScreen.AiTurn.soundEvents,
         )
     }
 }

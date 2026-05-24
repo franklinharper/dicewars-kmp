@@ -26,12 +26,14 @@ class AppActivity : ComponentActivity() {
         soundPlayer = player
         val debugPrefs = AndroidDebugPreferences(this)
         val statsStore = AndroidPlayerStatsStore(this)
+        val gameStateStore = AndroidGameStateStore(this)
         setContent {
             App(
                 onThemeChanged = { ThemeChanged(it) },
                 soundPlayer = player,
                 debugPreferences = debugPrefs,
                 playerStatsStore = statsStore,
+                gameStateStore = gameStateStore,
                 backGestureHandler = { enabled, onBack -> BackHandler(enabled = enabled, onBack = onBack) },
             )
         }
