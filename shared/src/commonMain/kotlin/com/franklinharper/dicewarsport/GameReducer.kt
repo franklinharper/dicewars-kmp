@@ -227,7 +227,7 @@ class GameReducer(
         if (terminalScreen != null) {
             val terminalSounds = battleSounds + terminalScreen.soundEvents
             return Result(
-                recordStatsIfNeeded(state.copy(game = newGame, screen = terminalScreen, selectedFrom = null, selectedTo = null, eliminatedPlayerIds = newEliminations.playerIds, eliminatedPlayerSeats = newEliminations.seatIds)),
+                recordStatsIfNeeded(state.copy(game = newGame, screen = terminalScreen, selectedFrom = null, selectedTo = null, eliminatedPlayerIds = newEliminations.playerIds, eliminatedPlayerSeats = newEliminations.seatIds, resolvingAfterHumanEliminated = false)),
                 terminalSounds,
             )
         }

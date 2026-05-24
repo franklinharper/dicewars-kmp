@@ -16,9 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -49,20 +47,6 @@ fun GameBoardScreen(state: GameUiState, onAction: (GameAction) -> Unit, title: S
     onGoToDebug = { onAction(GameAction.GoToDebug) },
     horizontalPadding = 16.dp,
 ) {
-    if (state.resolvingAfterHumanEliminated) {
-        LaunchedEffect(Unit) { onAction(GameAction.FinishMatchAfterHumanEliminated) }
-        AlertDialog(
-            onDismissRequest = {},
-            confirmButton = {},
-            title = { Text("finishing the match") },
-            text = {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                ) { CircularProgressIndicator() }
-            },
-        )
-    }
     Board(state, onAction)
     PlayerStatusBar(state)
     Spacer(Modifier.height(24.dp))
@@ -71,7 +55,24 @@ fun GameBoardScreen(state: GameUiState, onAction: (GameAction) -> Unit, title: S
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (state.screen == DicewarsScreen.HumanTurn) {
+        if (state.resolvingAfterHumanEliminated) {
+            LaunchedEffect(state.game) {
+                delay(300)
+                onAction(GameAction.AiStep)
+            }
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = "You have been eliminated. Bots are finishing the game.",
+                    style = MaterialTheme.typography.titleMedium,
+                    textAlign = TextAlign.Center,
+                )
+                Button(onClick = { onAction(GameAction.FinishMatchAfterHumanEliminated) }) { Text("Finish game") }
+            }
+        } else if (state.screen == DicewarsScreen.HumanTurn) {
             if (state.humanAutoplayEnabled) {
                 LaunchedEffect(state.game) {
                     delay(300)
@@ -91,7 +92,7 @@ fun GameBoardScreen(state: GameUiState, onAction: (GameAction) -> Unit, title: S
             )
             Spacer(Modifier.width(16.dp))
             Button(onClick = { onAction(GameAction.EndTurn) }) { Text("End turn") }
-        } else if (!state.resolvingAfterHumanEliminated) {
+        } else {
             LaunchedEffect(state.game) {
                 delay(300)
                 onAction(GameAction.AiStep)
@@ -99,11 +100,13 @@ fun GameBoardScreen(state: GameUiState, onAction: (GameAction) -> Unit, title: S
         }
     }
     Spacer(Modifier.weight(1f))
-    Button(
-        onClick = { onAction(GameAction.ToggleHumanAutoplay) },
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Text(if (state.humanAutoplayEnabled) "Turn Autoplay off" else "Turn Autoplay on")
+    if (!state.resolvingAfterHumanEliminated) {
+        Button(
+            onClick = { onAction(GameAction.ToggleHumanAutoplay) },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(if (state.humanAutoplayEnabled) "Turn Autoplay off" else "Turn Autoplay on")
+        }
     }
 }
 
