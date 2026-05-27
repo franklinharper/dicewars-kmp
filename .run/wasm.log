@@ -1,0 +1,35 @@
+Configuration 'wasmJsNpmAggregated' was resolved during configuration time.
+This is a build performance and scalability issue.
+See https://github.com/gradle/gradle/issues/2298
+Run with --info for a stacktrace.
+Configuration 'wasmJsTestNpmAggregated' was resolved during configuration time.
+This is a build performance and scalability issue.
+See https://github.com/gradle/gradle/issues/2298
+Run with --info for a stacktrace.
+warning Skipping preferred cache folder "/Users/frank/Library/Caches/Yarn" because it is not writable.
+warning Selected the next writable cache folder in the list, will be "/var/folders/gp/3kx0942d6fq1ck_wnlg2b34r0000gn/T/.yarn-cache-501".
+(node:49843) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:49843) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+warning Ignored scripts due to flag.
+w: file:///Users/frank/proj/dicewars-kmp/shared/src/commonMain/kotlin/com/franklinharper/dicewarsport/ai/neural/NeuralBotFactory.kt:14:1 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. Consider using the '-Xexpect-actual-classes' flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+w: file:///Users/frank/proj/dicewars-kmp/shared/src/wasmJsMain/kotlin/com/franklinharper/dicewarsport/ai/neural/NeuralBotFactory.kt:6:1 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. Consider using the '-Xexpect-actual-classes' flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+asset 035370b3d7aecc4b3d23.wasm 24.1 MiB [emitted] [immutable] [from: kotlin/dicewars-port-webApp.wasm] (auxiliary name: main)
+asset 0c7a3ff214d646587a58.wasm 8.24 MiB [emitted] [immutable] [from: kotlin/skiko.wasm] (auxiliary name: main)
+asset webApp.js 4.03 MiB [emitted] (name: main)
+runtime modules 30.1 KiB 13 modules
+javascript modules 1.52 MiB
+  modules by path ../../ 506 KiB
+    modules by path ../../../../../../.kotlin/kotlin-npm-tooling/yarn/e49be039833f93cd8352f956b90315...(truncated) 90.2 KiB 8 modules
+    modules by path ../../../../../../.kotlin/kotlin-npm-tooling/yarn/e49be039833f93cd8352f956b90315...(truncated) 5.17 KiB 4 modules
+    + 3 modules
+  modules by path ./kotlin/ 1.03 MiB
+    modules with warnings 427 KiB [true warnings] 2 modules
+    ./kotlin/custom-formatters.js 5.13 KiB [built] [code generated]
+    ./kotlin/skiko.mjs 618 KiB [built] [code generated]
+    ./kotlin/dicewars-port-webApp.js-builtins.mjs 2.05 KiB [built] [code generated]
+asset modules 32.4 MiB (asset) 84 bytes (javascript)
+  ./kotlin/dicewars-port-webApp.wasm 24.1 MiB (asset) 42 bytes (javascript) [built] [code generated]
+  ./kotlin/skiko.wasm 8.24 MiB (asset) 42 bytes (javascript) [built] [code generated]
+assets by status 36.4 MiB [cached] 3 assets
+cached modules 1.52 MiB (javascript) 32.4 MiB (asset) 30.1 KiB (runtime) [cached] 35 modules

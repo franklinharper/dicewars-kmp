@@ -28,8 +28,8 @@ fun chooseAutoplayMove(game: DicewarsGame, player: Int): Pair<Int, Int>? {
 }
 
 private fun DicewarsGame.hasEnoughReserveAfterEitherOutcome(from: Int, to: Int, player: Int): Boolean =
-    canReplenishAllOwnedTerritories(resolveBattleForSimulation(from, to, success = true), player) &&
-        canReplenishAllOwnedTerritories(resolveBattleForSimulation(from, to, success = false), player)
+    canReplenishAllOwnedTerritories(resolveBattleForSimulation(from, to, win = true), player) &&
+        canReplenishAllOwnedTerritories(resolveBattleForSimulation(from, to, win = false), player)
 
 private fun canReplenishAllOwnedTerritories(gameAfterAttack: DicewarsGame, player: Int): Boolean {
     val suppliedGame = gameAfterAttack.startSupply(player)

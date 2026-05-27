@@ -1,8 +1,8 @@
 package com.franklinharper.dicewarsport
 
 object HexGrid {
-    const val GRID_WIDTH: Int = DicewarsGame.XMAX
-    const val GRID_HEIGHT: Int = DicewarsGame.YMAX
+    const val GRID_WIDTH: Int = DicewarsGame.MAX_WIDTH
+    const val GRID_HEIGHT: Int = DicewarsGame.MAX_HEIGHT
     const val TOTAL_CELLS: Int = GRID_WIDTH * GRID_HEIGHT
 
     fun cellIndex(x: Int, y: Int): Int = y * GRID_WIDTH + x

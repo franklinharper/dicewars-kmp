@@ -21,7 +21,7 @@ data class AreaData(
 )
 
 @Serializable
-data class PlayerData(
+data class Player(
     val areaCount: Int = 0,
     val maxConnectedAreaCount: Int = 0,
     val diceCount: Int = 0,

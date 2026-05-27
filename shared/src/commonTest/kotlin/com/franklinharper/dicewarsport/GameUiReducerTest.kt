@@ -4,7 +4,6 @@ import com.franklinharper.dicewarsport.ai.MaxBot
 import com.franklinharper.dicewarsport.ai.Move
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class GameUiReducerTest {
@@ -30,7 +29,7 @@ class GameUiReducerTest {
         val started = reducer.reduce(selected.state, GameAction.StartPressed)
 
         assertEquals(4, selected.state.selectedPlayerCount)
-        assertEquals(4, started.state.game.pmax)
+        assertEquals(4, started.state.game.maxPlayers)
         assertTrue(started.state.screen == DicewarsScreen.HumanTurn || started.state.screen == DicewarsScreen.AiTurn)
         assertEquals(listOf(SoundEvent.BUTTON), selected.soundEvents)
     }
@@ -71,7 +70,7 @@ class GameUiReducerTest {
         val result = reducer().reduce(turnState(DicewarsScreen.HumanTurn), GameAction.EndTurn)
 
         assertEquals(DicewarsScreen.AiTurn, result.state.screen)
-        assertEquals(1, result.state.game.currentPlayer())
+        assertEquals(1, result.state.game.currentPlayerId())
         assertEquals(5, result.state.game.areas[1].dice)
     }
 
@@ -88,7 +87,7 @@ class GameUiReducerTest {
         val finished = finishedReducer.reduce(GameUiState(screen = DicewarsScreen.AiTurn, game = noMoveGame), GameAction.AiStep)
 
         assertEquals(DicewarsScreen.HumanTurn, finished.state.screen)
-        assertEquals(0, finished.state.game.currentPlayer())
+        assertEquals(0, finished.state.game.currentPlayerId())
     }
 
     @Test
@@ -353,7 +352,7 @@ private fun uiGame(
     playerCount: Int = 2,
 ): DicewarsGame {
     val game = DicewarsGame(
-        pmax = playerCount,
+        maxPlayers = playerCount,
         user = 0,
         turnOrder = listOf(0, 1, 2, 3, 4, 5, 6, 7),
         turnIndex = turnIndex,

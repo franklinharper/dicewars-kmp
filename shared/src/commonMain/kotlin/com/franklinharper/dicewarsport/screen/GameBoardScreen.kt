@@ -114,8 +114,8 @@ fun GameBoardScreen(state: GameUiState, onAction: (GameAction) -> Unit, title: S
 private fun PlayerStatusBar(state: GameUiState) {
     val game = state.game
     Column(modifier = Modifier.fillMaxWidth()) {
-        for (player in game.turnOrder.take(game.pmax)) {
-            val isCurrentPlayer = player == game.currentPlayer()
+        for (player in game.turnOrder.take(game.maxPlayers)) {
+            val isCurrentPlayer = player == game.currentPlayerId()
             val isEliminated = game.players[player].maxConnectedAreaCount == 0
             val playerName = state.playerNames[player] ?: "Player $player"
             val supply = game.players[player].maxConnectedAreaCount

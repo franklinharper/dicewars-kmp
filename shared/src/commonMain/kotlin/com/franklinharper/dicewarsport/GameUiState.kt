@@ -6,7 +6,7 @@ data class GameUiState(
     val selectedFrom: Int? = null,
     val selectedTo: Int? = null,
     val spectateMode: Boolean = false,
-    val selectedPlayerCount: Int = game.pmax,
+    val selectedPlayerCount: Int = game.maxPlayers,
     val soundEnabled: Boolean = true,
     val debugMode: Boolean = false,
     val titleTapCount: Int = 0,

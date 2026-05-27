@@ -9,7 +9,7 @@ object NeuralBattleChanceExpander {
     fun expand(
         game: DicewarsGame,
         move: Move,
-        actorPlayer: Int = game.currentPlayer(),
+        actorPlayer: Int = game.currentPlayerId(),
     ): List<BattleChanceOutcome> {
         require(game.isLegalAttack(move.from, move.to, actorPlayer)) {
             "Cannot expand illegal attack $move for player $actorPlayer"
@@ -21,12 +21,12 @@ object NeuralBattleChanceExpander {
             BattleChanceOutcome(
                 type = BattleChanceOutcomeType.Win,
                 probability = outcome.win,
-                game = game.resolveBattleForSimulation(move.from, move.to, success = true),
+                game = game.resolveBattleForSimulation(move.from, move.to, win = true),
             ),
             BattleChanceOutcome(
                 type = BattleChanceOutcomeType.Loss,
                 probability = outcome.loss,
-                game = game.resolveBattleForSimulation(move.from, move.to, success = false),
+                game = game.resolveBattleForSimulation(move.from, move.to, win = false),
             ),
         )
     }

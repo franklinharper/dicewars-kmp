@@ -39,7 +39,7 @@ class MapRendererLogicTest {
     }
 
     private fun rendererMap(): GameMap {
-        val cells = MutableList(DicewarsGame.XMAX * DicewarsGame.YMAX) { 0 }
+        val cells = MutableList(DicewarsGame.MAX_WIDTH * DicewarsGame.MAX_HEIGHT) { 0 }
         cells[0] = 1
         cells[1] = 2
         val territories = (1 until DicewarsGame.AREA_MAX).map { areaId ->
@@ -50,8 +50,8 @@ class MapRendererLogicTest {
             }
         }
         return GameMap(
-            gridWidth = DicewarsGame.XMAX,
-            gridHeight = DicewarsGame.YMAX,
+            gridWidth = DicewarsGame.MAX_WIDTH,
+            gridHeight = DicewarsGame.MAX_HEIGHT,
             maxTerritories = DicewarsGame.AREA_MAX,
             cells = cells,
             territories = territories,

@@ -8,7 +8,7 @@ data class BattleRoll(
     val success: Boolean,
 )
 
-fun DicewarsGame.isLegalAttack(from: Int, to: Int, player: Int = currentPlayer()): Boolean {
+fun DicewarsGame.isLegalAttack(from: Int, to: Int, player: Int = currentPlayerId()): Boolean {
     if (from !in 1 until DicewarsGame.AREA_MAX) return false
     if (to !in 1 until DicewarsGame.AREA_MAX) return false
 
@@ -56,8 +56,8 @@ fun DicewarsGame.resolveBattle(from: Int, to: Int, roll: BattleRoll): DicewarsGa
  * but intentionally skips the history append because search trees may evaluate
  * thousands of hypothetical outcomes that should not be replay-visible actions.
  */
-fun DicewarsGame.resolveBattleForSimulation(from: Int, to: Int, success: Boolean): DicewarsGame =
-    resolveBattleOutcome(from = from, to = to, success = success, historyEntry = null)
+fun DicewarsGame.resolveBattleForSimulation(from: Int, to: Int, win: Boolean): DicewarsGame =
+    resolveBattleOutcome(from = from, to = to, success = win, historyEntry = null)
 
 private fun DicewarsGame.resolveBattleOutcome(
     from: Int,
@@ -85,7 +85,7 @@ private fun DicewarsGame.resolveBattleOutcome(
     return game
 }
 
-fun DicewarsGame.startSupply(player: Int = currentPlayer()): DicewarsGame {
+fun DicewarsGame.startSupply(player: Int = currentPlayerId()): DicewarsGame {
     var game = setAreaTc(player)
     val playerData = game.players[player]
     val newStock = (playerData.stock + playerData.maxConnectedAreaCount)
@@ -121,9 +121,9 @@ fun DicewarsGame.supplyOneDie(player: Int, random: RandomSource): Pair<DicewarsG
 
 fun DicewarsGame.nextPlayer(): DicewarsGame {
     var newTurnIndex = turnIndex
-    for (i in 0 until pmax) {
+    for (i in 0 until maxPlayers) {
         newTurnIndex++
-        if (newTurnIndex >= pmax) newTurnIndex = 0
+        if (newTurnIndex >= maxPlayers) newTurnIndex = 0
         val player = turnOrder[newTurnIndex]
         if (players[player].maxConnectedAreaCount > 0) break
     }

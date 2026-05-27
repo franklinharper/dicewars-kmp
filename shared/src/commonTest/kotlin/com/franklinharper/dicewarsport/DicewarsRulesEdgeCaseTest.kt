@@ -57,7 +57,7 @@ class DicewarsRulesEdgeCaseTest {
     @Test
     fun setAreaTcCountsSeparatedConnectedComponents() {
         val game = DicewarsGame(
-            pmax = 2,
+            maxPlayers = 2,
             areas = List(DicewarsGame.AREA_MAX) { i ->
                 when (i) {
                     1 -> AreaData(size = 5, owner = 0, dice = 2, adjacentAreas = adj(2))
@@ -81,7 +81,7 @@ class DicewarsRulesEdgeCaseTest {
         area2Adj: List<Int> = listOf(1),
     ): DicewarsGame {
         val game = DicewarsGame(
-            pmax = 2,
+            maxPlayers = 2,
             turnOrder = listOf(0, 1, 2, 3, 4, 5, 6, 7),
             areas = List(DicewarsGame.AREA_MAX) { i ->
                 when (i) {

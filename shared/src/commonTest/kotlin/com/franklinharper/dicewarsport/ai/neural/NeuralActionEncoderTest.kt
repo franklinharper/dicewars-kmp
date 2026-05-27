@@ -70,7 +70,7 @@ class NeuralActionEncoderTest {
     @Test
     fun legalActionMaskMatchesGameLegalityForEveryAttackAction() {
         val game = aiGame()
-        val actor = game.currentPlayer()
+        val actor = game.currentPlayerId()
         val mask = NeuralActionEncoder.legalActionMask(game, actorPlayer = actor)
 
         for (from in 0 until DicewarsGame.AREA_MAX) {

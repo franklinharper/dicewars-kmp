@@ -60,7 +60,7 @@ class DicewarsAiHeuristicTest {
 
     private fun aiGame(areas: Map<Int, AreaData>, pmax: Int = 3): DicewarsGame {
         var game = DicewarsGame(
-            pmax = pmax,
+            maxPlayers = pmax,
             turnOrder = listOf(0, 1, 2, 3, 4, 5, 6, 7),
             turnIndex = 0,
             areas = List(DicewarsGame.AREA_MAX) { i -> areas[i] ?: AreaData() },

@@ -8,7 +8,7 @@ fun aiAdj(vararg ids: Int): List<Int> {
 
 fun aiGame(): DicewarsGame {
     val game = DicewarsGame(
-        pmax = 2,
+        maxPlayers = 2,
         turnOrder = listOf(0, 1, 2, 3, 4, 5, 6, 7),
         turnIndex = 0,
         areas = List(DicewarsGame.AREA_MAX) { i ->
@@ -26,7 +26,7 @@ fun aiGame(): DicewarsGame {
 
 fun turtleSkipGame(): DicewarsGame {
     val game = DicewarsGame(
-        pmax = 2,
+        maxPlayers = 2,
         turnOrder = listOf(0, 1, 2, 3, 4, 5, 6, 7),
         turnIndex = 0,
         areas = List(DicewarsGame.AREA_MAX) { i ->

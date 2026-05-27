@@ -9,9 +9,9 @@ class SavedGameStateCodecTest {
     @Test
     fun roundTripsSavedGameState() {
         val game = DicewarsGame(
-            pmax = 2,
+            maxPlayers = 2,
             user = 0,
-            cells = List(DicewarsGame.XMAX * DicewarsGame.YMAX) { if (it % 3 == 0) 1 else 2 },
+            cells = List(DicewarsGame.MAX_WIDTH * DicewarsGame.MAX_HEIGHT) { if (it % 3 == 0) 1 else 2 },
             areas = List(DicewarsGame.AREA_MAX) { areaId ->
                 when (areaId) {
                     1 -> AreaData(
@@ -35,7 +35,7 @@ class SavedGameStateCodecTest {
                 }
             },
             players = List(8) { player ->
-                PlayerData(
+                Player(
                     areaCount = player,
                     maxConnectedAreaCount = if (player < 2) 1 else 0,
                     diceCount = player + 3,

@@ -20,8 +20,8 @@ class TerminatorBot : AiStrategy {
     override val name: String = "Terminator"
 
     override fun chooseMove(game: DicewarsGame): Move? {
-        val player = game.currentPlayer()
-        val neighbors = game.precomputeNeighbors()
+        val player = game.currentPlayerId()
+        val neighbors = game.neighborIds()
         val baseline = evaluate(game, player, neighbors)
         val leader = leaderOf(game, player)
         val myDice = game.players[player].diceCount
@@ -40,8 +40,8 @@ class TerminatorBot : AiStrategy {
                 val reserveSafe = canFullyReplenishAfterEitherOutcome(game, player, from, to)
                 if (!candidateAllowed(attacker.dice, defender.dice, reserveSafe)) continue
 
-                val winGame = game.resolveBattleForSimulation(from, to, success = true)
-                val loseGame = game.resolveBattleForSimulation(from, to, success = false)
+                val winGame = game.resolveBattleForSimulation(from, to, win = true)
+                val loseGame = game.resolveBattleForSimulation(from, to, win = false)
                 val winEval = evaluate(winGame, player, neighbors)
                 val loseEval = evaluate(loseGame, player, neighbors)
                 val expectedGain = p * winEval + (1.0 - p) * loseEval - baseline
@@ -88,7 +88,7 @@ class TerminatorBot : AiStrategy {
         var strongestEnemyConnected = 0
         var strongestEnemyDice = 0
         var livingEnemies = 0
-        for (p in 0 until game.pmax) if (p != player) {
+        for (p in 0 until game.maxPlayers) if (p != player) {
             val enemy = game.players[p]
             if (enemy.areaCount > 0) livingEnemies++
             strongestEnemyAreas = max(strongestEnemyAreas, enemy.areaCount)
@@ -137,8 +137,8 @@ class TerminatorBot : AiStrategy {
     }
 
     private fun canFullyReplenishAfterEitherOutcome(game: DicewarsGame, player: Int, from: Int, to: Int): Boolean {
-        val win = game.resolveBattleForSimulation(from, to, success = true)
-        val lose = game.resolveBattleForSimulation(from, to, success = false)
+        val win = game.resolveBattleForSimulation(from, to, win = true)
+        val lose = game.resolveBattleForSimulation(from, to, win = false)
         return replenishmentCoverage(win, player) >= 1.0 && replenishmentCoverage(lose, player) >= 1.0
     }
 
@@ -160,14 +160,14 @@ class TerminatorBot : AiStrategy {
 
     private fun strongestEnemyDice(game: DicewarsGame, player: Int): Int {
         var best = 0
-        for (p in 0 until game.pmax) if (p != player) best = max(best, game.players[p].diceCount)
+        for (p in 0 until game.maxPlayers) if (p != player) best = max(best, game.players[p].diceCount)
         return best
     }
 
     private fun leaderOf(game: DicewarsGame, player: Int): Int {
         var best = -1
         var bestValue = Int.MIN_VALUE
-        for (p in 0 until game.pmax) if (p != player) {
+        for (p in 0 until game.maxPlayers) if (p != player) {
             val pd = game.players[p]
             if (pd.areaCount <= 0) continue
             val value = pd.areaCount * 12 + pd.maxConnectedAreaCount * 7 + pd.diceCount

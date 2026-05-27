@@ -3,7 +3,6 @@ package com.franklinharper.dicewarsport
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class DicewarsRulesTest {
@@ -81,7 +80,7 @@ class DicewarsRulesTest {
         val roll = BattleRoll(listOf(6), listOf(1), attackerTotal = 6, defenderTotal = 1, success = true)
 
         val real = game.resolveBattle(from = 1, to = 2, roll = roll)
-        val simulated = game.resolveBattleForSimulation(from = 1, to = 2, success = true)
+        val simulated = game.resolveBattleForSimulation(from = 1, to = 2, win = true)
 
         assertEquals(real.areas, simulated.areas)
         assertEquals(real.players, simulated.players)
@@ -116,20 +115,20 @@ class DicewarsRulesTest {
     @Test
     fun nextPlayerSkipsEliminatedPlayers() {
         val game = DicewarsGame(
-            pmax = 3,
+            maxPlayers = 3,
             turnOrder = listOf(0, 1, 2),
             turnIndex = 0,
             players = List(8) { i ->
                 when (i) {
-                    1 -> PlayerData(maxConnectedAreaCount = 0)
-                    2 -> PlayerData(maxConnectedAreaCount = 1)
-                    else -> PlayerData(maxConnectedAreaCount = 1)
+                    1 -> Player(maxConnectedAreaCount = 0)
+                    2 -> Player(maxConnectedAreaCount = 1)
+                    else -> Player(maxConnectedAreaCount = 1)
                 }
             },
         )
 
         val result = game.nextPlayer()
-        assertEquals(2, result.currentPlayer())
+        assertEquals(2, result.currentPlayerId())
     }
 }
 
@@ -137,7 +136,7 @@ private fun rulesGame(sourceDice: Int = 3, targetDice: Int = 2): DicewarsGame {
     val adj1 = List(DicewarsGame.AREA_MAX) { if (it == 2) 1 else 0 }
     val adj2 = List(DicewarsGame.AREA_MAX) { if (it == 1) 1 else 0 }
     val game = DicewarsGame(
-        pmax = 2,
+        maxPlayers = 2,
         turnOrder = listOf(0, 1),
         turnIndex = 0,
         areas = List(DicewarsGame.AREA_MAX) { i ->

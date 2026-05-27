@@ -7,8 +7,8 @@ class BullyBot(private val random: RandomSource) : AiStrategy {
     override val name = "Bully"
 
     override fun chooseMove(game: DicewarsGame): Move? {
-        val player = game.currentPlayer()
-        val neighbors = game.precomputeNeighbors()
+        val player = game.currentPlayerId()
+        val neighbors = game.neighborIds()
         val moves = mutableListOf<Move>()
         val stalemateBreakers = mutableListOf<Move>()
         val canSpendMaxStack = allOwnedTerritoriesAreMaxed(game, player) &&

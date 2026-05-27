@@ -16,7 +16,7 @@ class GameReducer(
     private fun assignAiStrategiesFor(game: DicewarsGame, spectateMode: Boolean): Map<Int, AiStrategy> {
         val availableAiBots = if (spectateMode) BuiltInBots.all else selectedAiBotsForHumanGame()
         val assigned = mutableMapOf<Int, AiStrategy>()
-        for (p in 0 until game.pmax) {
+        for (p in 0 until game.maxPlayers) {
             if (!spectateMode && p == game.user) continue
             val bot = availableAiBots[random.nextInt(availableAiBots.size)]
             assigned[p] = bot.factory(random)
@@ -62,7 +62,7 @@ class GameReducer(
     private fun restoreAiStrategiesFor(game: DicewarsGame, spectateMode: Boolean, playerIds: Map<Int, String>): Map<Int, AiStrategy> {
         val fallbackBots = if (spectateMode) BuiltInBots.all else selectedAiBotsForHumanGame()
         val assigned = mutableMapOf<Int, AiStrategy>()
-        for (p in 0 until game.pmax) {
+        for (p in 0 until game.maxPlayers) {
             if (!spectateMode && p == game.user) continue
             val bot = BuiltInBots.byId[playerIds[p]] ?: fallbackBots[random.nextInt(fallbackBots.size)]
             assigned[p] = bot.factory(random)
@@ -73,7 +73,7 @@ class GameReducer(
 
     private fun playerNamesFor(game: DicewarsGame, spectateMode: Boolean, assignedAiStrategies: Map<Int, AiStrategy>): Map<Int, String> {
         val names = mutableMapOf<Int, String>()
-        for (p in 0 until game.pmax) {
+        for (p in 0 until game.maxPlayers) {
             names[p] = playerNames[p] ?: when {
                 !spectateMode && p == game.user -> "Human"
                 assignedAiStrategies.containsKey(p) -> assignedAiStrategies[p]!!.name
@@ -85,7 +85,7 @@ class GameReducer(
 
     private fun playerIdsFor(game: DicewarsGame, spectateMode: Boolean, assignedAiStrategies: Map<Int, AiStrategy>): Map<Int, String> {
         val ids = mutableMapOf<Int, String>()
-        for (p in 0 until game.pmax) {
+        for (p in 0 until game.maxPlayers) {
             ids[p] = when {
                 !spectateMode && p == game.user -> "human"
                 else -> aiIdFor(assignedAiStrategies[p])
@@ -166,7 +166,7 @@ class GameReducer(
         val selectedFrom = state.selectedFrom
         if (selectedFrom == null) {
             val area = state.game.areas.getOrNull(territoryId) ?: return Result(state)
-            return if (area.size > 0 && area.owner == state.game.currentPlayer() && area.dice > 1) {
+            return if (area.size > 0 && area.owner == state.game.currentPlayerId() && area.dice > 1) {
                 Result(state.copy(selectedFrom = territoryId), listOf(SoundEvent.CLICK))
             } else {
                 Result(state)
@@ -210,7 +210,7 @@ class GameReducer(
 
     private fun onHumanAutoplayStep(state: GameUiState): Result {
         if (state.screen != DicewarsScreen.HumanTurn || !state.humanAutoplayEnabled) return Result(state)
-        val player = state.game.currentPlayer()
+        val player = state.game.currentPlayerId()
         val move = chooseAutoplayMove(state.game, player) ?: return onTurnFinished(state)
         val roll = rollBattle(
             attackerDiceCount = state.game.areas[move.first].dice,
@@ -244,7 +244,7 @@ class GameReducer(
 
     private fun onAiStep(state: GameUiState): Result {
         if (state.screen != DicewarsScreen.AiTurn && !state.resolvingAfterHumanEliminated) return Result(state)
-        val player = state.game.currentPlayer()
+        val player = state.game.currentPlayerId()
         val strategy = assignedAiStrategyFor(player)
         val move = strategy.chooseMove(state.game) ?: return onTurnFinished(state)
         if (!state.game.isLegalAttack(move.from, move.to, player)) return onTurnFinished(state)
@@ -286,7 +286,7 @@ class GameReducer(
         var current = state
         var guard = 0
         while (terminalScreenOrNull(current.game, current.spectateMode) == null && guard < 100_000) {
-            val player = current.game.currentPlayer()
+            val player = current.game.currentPlayerId()
             val strategy = assignedAiStrategyFor(player)
             val move = strategy.chooseMove(current.game)
             current = if (move != null && current.game.isLegalAttack(move.from, move.to, player)) {
@@ -314,7 +314,7 @@ class GameReducer(
     }
 
     private fun finishTurnWithoutSounds(state: GameUiState): GameUiState {
-        val player = state.game.currentPlayer()
+        val player = state.game.currentPlayerId()
         var game = state.game.startSupply(player)
         while (true) {
             val (newGame, areaNumber) = game.supplyOneDie(player, random)
@@ -326,7 +326,7 @@ class GameReducer(
     }
 
     private fun onTurnFinished(state: GameUiState): Result {
-        val player = state.game.currentPlayer()
+        val player = state.game.currentPlayerId()
         var game = state.game.startSupply(player)
         while (true) {
             val (newGame, areaNumber) = game.supplyOneDie(player, random)
@@ -351,7 +351,7 @@ class GameReducer(
     private fun appendNewEliminations(state: GameUiState, newGame: DicewarsGame): Eliminations {
         val eliminatedIds = state.eliminatedPlayerIds.toMutableList()
         val eliminatedSeats = state.eliminatedPlayerSeats.toMutableList()
-        for (p in 0 until newGame.pmax) {
+        for (p in 0 until newGame.maxPlayers) {
             val id = state.playerIds[p] ?: continue
             if (p !in eliminatedSeats && state.game.players[p].maxConnectedAreaCount > 0 && newGame.players[p].maxConnectedAreaCount == 0) {
                 eliminatedSeats += p
@@ -363,8 +363,8 @@ class GameReducer(
 
     private fun recordStatsIfNeeded(state: GameUiState): GameUiState {
         if (state.spectateMode || state.gameStatsRecorded) return state
-        val winner = (0 until state.game.pmax).firstOrNull { state.game.players[it].maxConnectedAreaCount > 0 } ?: return state
-        val participants = (0 until state.game.pmax).mapNotNull { p ->
+        val winner = (0 until state.game.maxPlayers).firstOrNull { state.game.players[it].maxConnectedAreaCount > 0 } ?: return state
+        val participants = (0 until state.game.maxPlayers).mapNotNull { p ->
             val id = state.playerIds[p] ?: return@mapNotNull null
             val name = state.playerNames[p] ?: id
             PlayerStatsParticipant(seatId = p, playerId = id, displayName = name)
@@ -381,13 +381,13 @@ class GameReducer(
         activeAiStrategies[player] ?: error("No AI strategy assigned for bot seat $player")
 
     private fun terminalScreenOrNull(game: DicewarsGame, spectateMode: Boolean): DicewarsScreen? {
-        val activePlayers = (0 until game.pmax).count { game.players[it].maxConnectedAreaCount > 0 }
+        val activePlayers = (0 until game.maxPlayers).count { game.players[it].maxConnectedAreaCount > 0 }
         if (activePlayers == 1) return if (spectateMode || game.players[game.user].maxConnectedAreaCount == 0) DicewarsScreen.GameOver else DicewarsScreen.Win
         return null
     }
 
     private fun turnScreenFor(game: DicewarsGame, spectateMode: Boolean): DicewarsScreen =
-        if (!spectateMode && game.currentPlayer() == game.user) DicewarsScreen.HumanTurn else DicewarsScreen.AiTurn
+        if (!spectateMode && game.currentPlayerId() == game.user) DicewarsScreen.HumanTurn else DicewarsScreen.AiTurn
 
     private fun onTitleTapped(state: GameUiState): Result {
         val now = Clock.System.now().toEpochMilliseconds()
@@ -427,11 +427,11 @@ class GameReducer(
     private fun onShowDebugHumanEliminatedGame(state: GameUiState): Result {
         val playerCount = maxOf(2, state.selectedPlayerCount)
         val generated = DicewarsGame.generate(playerCount, random)
-        val opponent = (0 until generated.pmax).first { it != generated.user }
+        val opponent = (0 until generated.maxPlayers).first { it != generated.user }
         val transferredAreas = generated.areas.map { area ->
             if (area.size > 0 && area.owner == generated.user) area.copy(owner = opponent) else area
         }
-        val recalculated = (0 until generated.pmax).fold(
+        val recalculated = (0 until generated.maxPlayers).fold(
             generated.copy(
                 areas = transferredAreas,
                 turnIndex = generated.turnOrder.indexOf(opponent).takeIf { it >= 0 } ?: 0,

@@ -2,11 +2,8 @@ package com.franklinharper.dicewarsport.tournament
 
 import com.franklinharper.dicewarsport.AreaData
 import com.franklinharper.dicewarsport.DicewarsGame
-import com.franklinharper.dicewarsport.KotlinRandomSource
-import com.franklinharper.dicewarsport.PlayerData
+import com.franklinharper.dicewarsport.Player
 import com.franklinharper.dicewarsport.RandomSource
-import com.franklinharper.dicewarsport.ai.AiStrategy
-import kotlin.random.Random
 
 /**
  * Mutable, allocation-light game state for fast tournament execution.
@@ -46,10 +43,10 @@ class FastGameState private constructor(
         private const val PLAYER_MAX = 8
 
         fun fromGame(game: DicewarsGame): FastGameState {
-            val neighbors = game.precomputeNeighbors()
+            val neighbors = game.neighborIds()
 
             return FastGameState(
-                pmax = game.pmax,
+                pmax = game.maxPlayers,
                 turnOrder = game.turnOrder.toIntArray(),
                 turnIndex = game.turnIndex,
                 baseCells = game.cells,
@@ -82,7 +79,7 @@ class FastGameState private constructor(
             else base.copy(owner = areaOwner[i], dice = areaDice[i])
         }
         val players = List(PLAYER_MAX) { i ->
-            PlayerData(
+            Player(
                 areaCount = playerAreaCount[i],
                 maxConnectedAreaCount = playerMaxConnected[i],
                 diceCount = playerDiceCount[i],
@@ -91,7 +88,7 @@ class FastGameState private constructor(
             )
         }
         return DicewarsGame(
-            pmax = pmax,
+            maxPlayers = pmax,
             cells = baseCells,
             cellNeighbors = baseCellNeighbors,
             areas = areas,

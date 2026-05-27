@@ -7,8 +7,8 @@ class TurtleBot : AiStrategy {
     override val name = "Turtle"
 
     override fun chooseMove(game: DicewarsGame): Move? {
-        val currentPlayer = game.currentPlayer()
-        val neighbors = game.precomputeNeighbors()
+        val currentPlayer = game.currentPlayerId()
+        val neighbors = game.neighborIds()
         val areaInfo = List(DicewarsGame.AREA_MAX) { areaId -> analyzeArea(game, areaId, neighbors) }
         var bestMove: Move? = null
 

@@ -1,8 +1,8 @@
 package com.franklinharper.dicewarsport
 
 fun DicewarsGame.toRenderMap(): GameMap = GameMap(
-    gridWidth = DicewarsGame.XMAX,
-    gridHeight = DicewarsGame.YMAX,
+    gridWidth = DicewarsGame.MAX_WIDTH,
+    gridHeight = DicewarsGame.MAX_HEIGHT,
     maxTerritories = DicewarsGame.AREA_MAX,
     cells = cells,
     territories = (1 until DicewarsGame.AREA_MAX).map { areaNumber ->

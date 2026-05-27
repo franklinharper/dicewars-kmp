@@ -75,7 +75,7 @@ class NeuralStateEncoderTest {
         val encoding = NeuralStateEncoder.encode(aiGame(), actorPlayer = 0, perspectivePlayer = 0)
 
         assertEquals(5.0f / DicewarsGame.MAX_DICE, encoding.nodeFeatures[1][NeuralStateEncoder.NODE_DICE_FRACTION])
-        assertEquals(5.0f / (DicewarsGame.XMAX * DicewarsGame.YMAX), encoding.nodeFeatures[1][NeuralStateEncoder.NODE_SIZE_FRACTION])
+        assertEquals(5.0f / (DicewarsGame.MAX_WIDTH * DicewarsGame.MAX_HEIGHT), encoding.nodeFeatures[1][NeuralStateEncoder.NODE_SIZE_FRACTION])
         assertEquals(0.0f, encoding.nodeFeatures[0][NeuralStateEncoder.NODE_DICE_FRACTION])
     }
 

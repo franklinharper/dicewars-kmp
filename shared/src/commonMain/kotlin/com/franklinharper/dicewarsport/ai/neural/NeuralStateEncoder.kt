@@ -28,11 +28,11 @@ object NeuralStateEncoder {
 
     fun encode(
         game: DicewarsGame,
-        actorPlayer: Int = game.currentPlayer(),
+        actorPlayer: Int = game.currentPlayerId(),
         perspectivePlayer: Int = actorPlayer,
     ): NeuralStateEncoding {
-        require(actorPlayer in 0 until game.pmax) { "actorPlayer must be in 0 until game.pmax: $actorPlayer" }
-        require(perspectivePlayer in 0 until game.pmax) {
+        require(actorPlayer in 0 until game.maxPlayers) { "actorPlayer must be in 0 until game.pmax: $actorPlayer" }
+        require(perspectivePlayer in 0 until game.maxPlayers) {
             "perspectivePlayer must be in 0 until game.pmax: $perspectivePlayer"
         }
 
@@ -41,7 +41,7 @@ object NeuralStateEncoder {
         val areaMask = BooleanArray(DicewarsGame.AREA_MAX)
         val playerMask = BooleanArray(8)
 
-        for (player in 0 until game.pmax) {
+        for (player in 0 until game.maxPlayers) {
             playerMask[player] = true
         }
 
@@ -54,9 +54,9 @@ object NeuralStateEncoder {
             nodeFeatures[areaId][NODE_IS_REAL_AREA] = 1.0f
             nodeFeatures[areaId][NODE_IS_ACTOR_OWNED] = if (area.owner == actorPlayer) 1.0f else 0.0f
             nodeFeatures[areaId][NODE_IS_PERSPECTIVE_OWNED] = if (area.owner == perspectivePlayer) 1.0f else 0.0f
-            nodeFeatures[areaId][NODE_IS_ENEMY_OWNED] = if (area.owner in 0 until game.pmax && area.owner != actorPlayer) 1.0f else 0.0f
+            nodeFeatures[areaId][NODE_IS_ENEMY_OWNED] = if (area.owner in 0 until game.maxPlayers && area.owner != actorPlayer) 1.0f else 0.0f
             nodeFeatures[areaId][NODE_DICE_FRACTION] = area.dice.toFloat() / DicewarsGame.MAX_DICE.toFloat()
-            nodeFeatures[areaId][NODE_SIZE_FRACTION] = area.size.toFloat() / (DicewarsGame.XMAX * DicewarsGame.YMAX).toFloat()
+            nodeFeatures[areaId][NODE_SIZE_FRACTION] = area.size.toFloat() / (DicewarsGame.MAX_WIDTH * DicewarsGame.MAX_HEIGHT).toFloat()
 
             val adjacentAreas = area.adjacentAreas
             for (neighborId in 0 until minOf(adjacentAreas.size, DicewarsGame.AREA_MAX)) {
@@ -69,8 +69,8 @@ object NeuralStateEncoder {
         val globalFeatures = FloatArray(GLOBAL_FEATURE_COUNT)
         globalFeatures[GLOBAL_ACTOR_PLAYER_FRACTION] = actorPlayer.toFloat() / 7.0f
         globalFeatures[GLOBAL_PERSPECTIVE_PLAYER_FRACTION] = perspectivePlayer.toFloat() / 7.0f
-        globalFeatures[GLOBAL_CURRENT_PLAYER_FRACTION] = game.currentPlayer().toFloat() / 7.0f
-        globalFeatures[GLOBAL_PLAYER_COUNT_FRACTION] = game.pmax.toFloat() / 8.0f
+        globalFeatures[GLOBAL_CURRENT_PLAYER_FRACTION] = game.currentPlayerId().toFloat() / 7.0f
+        globalFeatures[GLOBAL_PLAYER_COUNT_FRACTION] = game.maxPlayers.toFloat() / 8.0f
 
         return NeuralStateEncoding(
             encoderVersion = ENCODER_VERSION,

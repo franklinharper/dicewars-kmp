@@ -31,7 +31,7 @@ class StochasticMcts(
      * per legal action index. The caller picks the final action (e.g., most visited).
      */
     fun search(rootGame: DicewarsGame, budget: Int): Map<Int, Int> {
-        val root = DecisionNode(rootGame, rootGame.currentPlayer())
+        val root = DecisionNode(rootGame, rootGame.currentPlayerId())
         repeat(budget) {
             val leaf = select(root)
             val expanded = expand(leaf)
@@ -75,10 +75,10 @@ class StochasticMcts(
         if (model != null) {
             val game = node.game
             val input = NeuralInput(
-                state = NeuralStateEncoder.encode(game, game.currentPlayer(), game.currentPlayer()),
-                legalActionMask = NeuralActionEncoder.legalActionMask(game, game.currentPlayer()),
-                actorPlayer = game.currentPlayer(),
-                perspectivePlayer = game.currentPlayer(),
+                state = NeuralStateEncoder.encode(game, game.currentPlayerId(), game.currentPlayerId()),
+                legalActionMask = NeuralActionEncoder.legalActionMask(game, game.currentPlayerId()),
+                actorPlayer = game.currentPlayerId(),
+                perspectivePlayer = game.currentPlayerId(),
             )
             return model.predict(input).value.toDouble()
         }
@@ -87,18 +87,18 @@ class StochasticMcts(
 
     private fun randomRollout(game: DicewarsGame): Double {
         var state = game
-        var currentPlayer = state.currentPlayer()
+        var currentPlayer = state.currentPlayerId()
         val rootPlayer = currentPlayer
 
         // Play out one full round (each surviving player gets one turn).
         // After that, evaluate position heuristically.
-        for (turn in 0 until state.pmax * 3) {
+        for (turn in 0 until state.maxPlayers * 3) {
             if (state.players[rootPlayer].maxConnectedAreaCount == 0) return 0.0
             val winner = state.findWinner()
             if (winner >= 0) return if (winner == rootPlayer) 1.0 else 0.0
 
             state = playRandomTurn(state)
-            currentPlayer = state.currentPlayer()
+            currentPlayer = state.currentPlayerId()
         }
         // Heuristic: connected area ratio
         val areas = state.players[rootPlayer].maxConnectedAreaCount
@@ -107,7 +107,7 @@ class StochasticMcts(
     }
 
     private fun playRandomTurn(game: DicewarsGame): DicewarsGame {
-        val player = game.currentPlayer()
+        val player = game.currentPlayerId()
         var state = game.startSupply(player)
 
         // Supply dice
@@ -218,7 +218,7 @@ class DecisionNode(
         // Supply dice deterministically for the current player
         // (rollout will handle randomness)
         nextGame = nextGame.nextPlayer()
-        return DecisionNode(nextGame, nextGame.currentPlayer(), parent = this)
+        return DecisionNode(nextGame, nextGame.currentPlayerId(), parent = this)
     }
 
     private fun expandAttack(actionIndex: Int): MctsNode {
@@ -274,8 +274,8 @@ class ChanceNode(
     }
 
     private fun expandOutcomes() {
-        val winGame = game.resolveBattleForSimulation(from, to, success = true)
-        val loseGame = game.resolveBattleForSimulation(from, to, success = false)
+        val winGame = game.resolveBattleForSimulation(from, to, win = true)
+        val loseGame = game.resolveBattleForSimulation(from, to, win = false)
         // Same player continues after both win and loss; turn only ends on explicit end-turn
         winChild = DecisionNode(winGame, player, parent = this)
         lossChild = DecisionNode(loseGame, player, parent = this)

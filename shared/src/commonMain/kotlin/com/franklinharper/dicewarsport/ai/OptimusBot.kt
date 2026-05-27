@@ -16,8 +16,8 @@ class OptimusBot : AiStrategy {
     override val name: String = "Optimus"
 
     override fun chooseMove(game: DicewarsGame): Move? {
-        val player = game.currentPlayer()
-        val neighbors = game.precomputeNeighbors()
+        val player = game.currentPlayerId()
+        val neighbors = game.neighborIds()
         val baseline = evaluate(game, player, neighbors)
         var bestMove: Move? = null
         var bestScore = -0.35 // pass only if every attack is clearly poor
@@ -34,8 +34,8 @@ class OptimusBot : AiStrategy {
                 if (p < minProbability(attacker.dice, defender.dice, game.players[player].areaCount)) continue
                 if (leader >= 0 && defender.owner != leader && game.players[leader].areaCount > game.players[player].areaCount + 1 && p < 0.72) continue
 
-                val winGame = game.resolveBattleForSimulation(from, to, success = true)
-                val loseGame = game.resolveBattleForSimulation(from, to, success = false)
+                val winGame = game.resolveBattleForSimulation(from, to, win = true)
+                val loseGame = game.resolveBattleForSimulation(from, to, win = false)
                 val winEval = evaluate(winGame, player, neighbors)
                 val loseEval = evaluate(loseGame, player, neighbors)
                 val reserveSafe = canReplenishAllOwnedTerritories(winGame, player) && canReplenishAllOwnedTerritories(loseGame, player)
@@ -78,7 +78,7 @@ class OptimusBot : AiStrategy {
 
         var strongestEnemyAreas = 0
         var strongestEnemyDice = 0
-        for (p in 0 until game.pmax) if (p != player) {
+        for (p in 0 until game.maxPlayers) if (p != player) {
             strongestEnemyAreas = max(strongestEnemyAreas, game.players[p].areaCount)
             strongestEnemyDice = max(strongestEnemyDice, game.players[p].diceCount)
         }
@@ -113,7 +113,7 @@ class OptimusBot : AiStrategy {
     private fun leaderOf(game: DicewarsGame, player: Int): Int {
         var best = -1
         var bestValue = Int.MIN_VALUE
-        for (p in 0 until game.pmax) if (p != player) {
+        for (p in 0 until game.maxPlayers) if (p != player) {
             val value = game.players[p].areaCount * 10 + game.players[p].diceCount + game.players[p].maxConnectedAreaCount * 4
             if (value > bestValue) { bestValue = value; best = p }
         }

@@ -39,6 +39,6 @@ fun GameOverScreen(state: GameUiState, onAction: (GameAction) -> Unit) = ScreenS
 }
 
 private fun winnerName(state: GameUiState): String {
-    val winner = (0 until state.game.pmax).firstOrNull { state.game.players[it].maxConnectedAreaCount > 0 }
+    val winner = (0 until state.game.maxPlayers).firstOrNull { state.game.players[it].maxConnectedAreaCount > 0 }
     return winner?.let { state.playerNames[it] ?: "Player ${it + 1}" } ?: "Unknown player"
 }

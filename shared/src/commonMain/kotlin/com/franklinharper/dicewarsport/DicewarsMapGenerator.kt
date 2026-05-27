@@ -1,8 +1,8 @@
 package com.franklinharper.dicewarsport
 
 object DicewarsMapGenerator {
-    private val XMAX: Int get() = DicewarsGame.XMAX
-    private val YMAX: Int get() = DicewarsGame.YMAX
+    private val XMAX: Int get() = DicewarsGame.MAX_WIDTH
+    private val YMAX: Int get() = DicewarsGame.MAX_HEIGHT
     private val AREA_MAX: Int get() = DicewarsGame.AREA_MAX
     private val MAX_DICE: Int get() = DicewarsGame.MAX_DICE
     private val AVERAGE_DICE_PLACEMENT: Int get() = DicewarsGame.AVERAGE_DICE_PLACEMENT
@@ -19,7 +19,7 @@ fun generate(pmax: Int, random: RandomSource, user: Int = 0): DicewarsGame {
         val num = MutableList(cellMax) { it }
         val adjacentCells = MutableList(cellMax) { 0 }
         val areaList = MutableList(AREA_MAX) { 0 }
-        val players = MutableList(8) { PlayerData() }
+        val players = MutableList(8) { Player() }
         val turnOrder = MutableList(8) { it }
     
         // Fisher-Yates shuffle
@@ -299,7 +299,7 @@ fun generate(pmax: Int, random: RandomSource, user: Int = 0): DicewarsGame {
         }
     
         var game = DicewarsGame(
-            pmax = pmax,
+            maxPlayers = pmax,
             user = user,
             cells = cells.toList(),
             cellNeighbors = cellNeighbors,

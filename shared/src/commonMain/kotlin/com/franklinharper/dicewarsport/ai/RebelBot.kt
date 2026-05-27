@@ -28,8 +28,8 @@ class RebelBot(private val random: RandomSource) : AiStrategy {
             if (diceCounts[player] > totalDice * 2 / 5) topPlayer = player
         }
 
-        val currentPlayer = game.currentPlayer()
-        val neighbors = game.precomputeNeighbors()
+        val currentPlayer = game.currentPlayerId()
+        val neighbors = game.neighborIds()
         val moves = mutableListOf<Move>()
 
         for (from in 1 until DicewarsGame.AREA_MAX) {

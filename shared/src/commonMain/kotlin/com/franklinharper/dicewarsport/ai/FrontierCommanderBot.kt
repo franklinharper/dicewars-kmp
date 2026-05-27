@@ -14,10 +14,10 @@ class FrontierCommanderBot : AiStrategy {
     override val name: String = "Frontier Commander"
 
     override fun chooseMove(game: DicewarsGame): Move? {
-        val player = game.currentPlayer()
+        val player = game.currentPlayerId()
         if (game.players.getOrNull(player)?.areaCount == 0) return null
 
-        val neighbors = game.precomputeNeighbors()
+        val neighbors = game.neighborIds()
         val currentValue = evaluate(game, player, neighbors)
         var bestMove: Move? = null
         var bestScore = Double.NEGATIVE_INFINITY
@@ -32,8 +32,8 @@ class FrontierCommanderBot : AiStrategy {
                 if (target.size == 0 || target.owner == player) continue
 
                 val winProbability = WIN_PROBABILITY[source.dice][target.dice]
-                val successGame = game.resolveBattleForSimulation(from, to, success = true)
-                val failureGame = game.resolveBattleForSimulation(from, to, success = false)
+                val successGame = game.resolveBattleForSimulation(from, to, win = true)
+                val failureGame = game.resolveBattleForSimulation(from, to, win = false)
 
                 val successValue = evaluate(successGame, player, neighbors)
                 val failureValue = evaluate(failureGame, player, neighbors)
@@ -56,7 +56,7 @@ class FrontierCommanderBot : AiStrategy {
             }
         }
 
-        val activeEnemies = (0 until game.pmax).count { it != player && game.players[it].areaCount > 0 }
+        val activeEnemies = (0 until game.maxPlayers).count { it != player && game.players[it].areaCount > 0 }
         val baseAttackThreshold = when {
             game.players[player].areaCount <= 2 -> 8.0
             activeEnemies <= 2 -> if (bestProbability >= 0.80) -2.0 else 8.0
@@ -89,7 +89,7 @@ class FrontierCommanderBot : AiStrategy {
         val own = game.players[player]
         var strongestEnemyDice = 0
         var strongestEnemySupply = 0
-        for (enemy in 0 until game.pmax) {
+        for (enemy in 0 until game.maxPlayers) {
             if (enemy == player) continue
             val enemyData = game.players[enemy]
             if (enemyData.areaCount <= 0) continue
@@ -120,7 +120,7 @@ class FrontierCommanderBot : AiStrategy {
 
         // Prefer attacks that hurt the current front-runner; avoid wasting good stacks on dying players
         // unless it removes them from the board.
-        val strongestEnemyAreas = (0 until game.pmax)
+        val strongestEnemyAreas = (0 until game.maxPlayers)
             .filter { it != player }
             .maxOfOrNull { game.players[it].areaCount } ?: 0
         if (targetPlayer.areaCount == strongestEnemyAreas && strongestEnemyAreas >= ownPlayer.areaCount) {
@@ -166,7 +166,7 @@ class FrontierCommanderBot : AiStrategy {
         val snapshots = computeSnapshots(game, neighbors)
         val own = snapshots[player]
         if (own.areas == 0) return -1_000_000.0
-        val activeEnemies = (0 until game.pmax).filter { it != player && snapshots[it].areas > 0 }
+        val activeEnemies = (0 until game.maxPlayers).filter { it != player && snapshots[it].areas > 0 }
         if (activeEnemies.isEmpty()) return 1_000_000.0
 
         val largestEnemyAreas = activeEnemies.maxOf { snapshots[it].areas }
@@ -199,10 +199,10 @@ class FrontierCommanderBot : AiStrategy {
     }
 
     private fun computeSnapshots(game: DicewarsGame, neighbors: Array<IntArray>): Array<PlayerSnapshot> {
-        val result = Array(game.pmax) { PlayerSnapshot() }
+        val result = Array(game.maxPlayers) { PlayerSnapshot() }
         val visited = BooleanArray(DicewarsGame.AREA_MAX)
 
-        for (player in 0 until game.pmax) {
+        for (player in 0 until game.maxPlayers) {
             var areaCount = 0
             var diceCount = 0
             var largestComponent = 0
@@ -302,7 +302,7 @@ class FrontierCommanderBot : AiStrategy {
     }
 
     private fun isEndgame(game: DicewarsGame, player: Int): Boolean =
-        (0 until game.pmax).count { it != player && game.players[it].areaCount > 0 } <= 2
+        (0 until game.maxPlayers).count { it != player && game.players[it].areaCount > 0 } <= 2
 
     private fun tieBreak(move: Move?): Int = move?.let { tieBreak(it.from, it.to, 0, 0) } ?: Int.MIN_VALUE
 

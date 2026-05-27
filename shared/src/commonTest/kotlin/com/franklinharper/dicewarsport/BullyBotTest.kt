@@ -37,7 +37,7 @@ class BullyBotTest {
     @Test
     fun breaksMaxDiceStalemateWhenReinforcementsCanReplaceStack() {
         val base = DicewarsGame(
-            pmax = 2,
+            maxPlayers = 2,
             turnOrder = listOf(0, 1, 2, 3, 4, 5, 6, 7),
             turnIndex = 0,
             areas = List(DicewarsGame.AREA_MAX) { i ->

@@ -18,7 +18,7 @@ class DicewarsAiTest {
             },
         )
 
-        val neighbors = game.precomputeNeighbors()
+        val neighbors = game.neighborIds()
 
         assertContentEquals(intArrayOf(2, 4), neighbors[1])
         assertContentEquals(intArrayOf(1), neighbors[2])

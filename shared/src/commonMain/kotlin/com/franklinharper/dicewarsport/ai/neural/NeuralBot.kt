@@ -30,7 +30,7 @@ class NeuralBot(
     }
 
     private fun chooseByPolicy(game: DicewarsGame): Move? {
-        val actor = game.currentPlayer()
+        val actor = game.currentPlayerId()
         val legalMask = NeuralActionEncoder.legalActionMask(game, actor)
         val prediction = predict(game, actor)
 

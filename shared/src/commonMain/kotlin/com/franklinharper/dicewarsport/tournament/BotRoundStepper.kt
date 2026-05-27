@@ -73,7 +73,7 @@ class BotRoundStepper(
             return BotRoundStepResult(failedState, failedState.terminalEntry(RoundActionType.RoundFailed))
         }
 
-        val player = state.game.currentPlayer()
+        val player = state.game.currentPlayerId()
         val participantId = state.spec.participants[player].id
         val strategy = state.strategies.getOrNull(player)
         val move = strategy?.chooseMove(state.game)
@@ -166,15 +166,15 @@ class BotRoundStepper(
 
     private fun BotRoundState.terminalEntry(type: RoundActionType): RoundActionLogEntry = RoundActionLogEntry(
         actionNumber = actionsTaken + 1,
-        playerSlot = game.currentPlayer(),
-        participantId = spec.participants.getOrNull(game.currentPlayer())?.id ?: "",
+        playerSlot = game.currentPlayerId(),
+        participantId = spec.participants.getOrNull(game.currentPlayerId())?.id ?: "",
         actionType = type,
         eliminatedParticipantIds = emptyList(),
     )
 }
 
 private fun activePlayerSlots(game: DicewarsGame): List<Int> =
-    (0 until game.pmax).filter { player -> game.players[player].maxConnectedAreaCount > 0 }
+    (0 until game.maxPlayers).filter { player -> game.players[player].maxConnectedAreaCount > 0 }
 
 private fun DicewarsGame.finishBotTurnWithSuppliedAreas(player: Int, random: RandomSource): Pair<DicewarsGame, List<Int>> {
     var game = startSupply(player)

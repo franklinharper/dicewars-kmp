@@ -7,7 +7,7 @@ class MaxBot : AiStrategy {
     override val name: String = "Max"
 
     override fun chooseMove(game: DicewarsGame): Move? {
-        val move = chooseAutoplayMove(game, game.currentPlayer()) ?: return null
+        val move = chooseAutoplayMove(game, game.currentPlayerId()) ?: return null
         return Move(move.first, move.second)
     }
 }

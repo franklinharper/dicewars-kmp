@@ -33,8 +33,8 @@ object NeuralActionEncoder {
         return Move(from = index / AREA_COUNT, to = index % AREA_COUNT)
     }
 
-    fun legalActionIndices(game: DicewarsGame, actorPlayer: Int = game.currentPlayer()): List<Int> {
-        require(actorPlayer in 0 until game.pmax) { "actorPlayer must be in 0 until game.pmax: $actorPlayer" }
+    fun legalActionIndices(game: DicewarsGame, actorPlayer: Int = game.currentPlayerId()): List<Int> {
+        require(actorPlayer in 0 until game.maxPlayers) { "actorPlayer must be in 0 until game.pmax: $actorPlayer" }
         val indices = mutableListOf<Int>()
         for (from in 0 until AREA_COUNT) {
             for (to in 0 until AREA_COUNT) {
@@ -47,8 +47,8 @@ object NeuralActionEncoder {
         return indices
     }
 
-    fun legalActionMask(game: DicewarsGame, actorPlayer: Int = game.currentPlayer()): BooleanArray {
-        require(actorPlayer in 0 until game.pmax) { "actorPlayer must be in 0 until game.pmax: $actorPlayer" }
+    fun legalActionMask(game: DicewarsGame, actorPlayer: Int = game.currentPlayerId()): BooleanArray {
+        require(actorPlayer in 0 until game.maxPlayers) { "actorPlayer must be in 0 until game.pmax: $actorPlayer" }
         val mask = BooleanArray(ACTION_COUNT)
         for (from in 0 until AREA_COUNT) {
             for (to in 0 until AREA_COUNT) {

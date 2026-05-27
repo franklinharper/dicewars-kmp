@@ -68,13 +68,13 @@ class NeuralBotTest {
         bot.chooseMove(game)
 
         val input = model.lastInput!!
-        assertEquals(game.currentPlayer(), input.actorPlayer)
-        assertEquals(game.currentPlayer(), input.perspectivePlayer)
+        assertEquals(game.currentPlayerId(), input.actorPlayer)
+        assertEquals(game.currentPlayerId(), input.perspectivePlayer)
     }
 
     private fun noLegalAttackGame(): DicewarsGame {
         val game = DicewarsGame(
-            pmax = 2,
+            maxPlayers = 2,
             turnOrder = listOf(0, 1, 2, 3, 4, 5, 6, 7),
             turnIndex = 0,
             areas = List(DicewarsGame.AREA_MAX) { i ->

@@ -2,7 +2,6 @@ package com.franklinharper.dicewarsport
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 class GameUiReducerEdgeCaseTest {
 
@@ -96,7 +95,7 @@ class GameUiReducerEdgeCaseTest {
 
     private fun testGame(): DicewarsGame {
         val game = DicewarsGame(
-            pmax = 2,
+            maxPlayers = 2,
             user = 0,
             turnOrder = listOf(0, 1, 2, 3, 4, 5, 6, 7),
             areas = List(DicewarsGame.AREA_MAX) { i ->

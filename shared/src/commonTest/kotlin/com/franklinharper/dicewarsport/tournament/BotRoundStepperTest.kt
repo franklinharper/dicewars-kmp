@@ -70,7 +70,7 @@ private fun stepperGame(attackerDice: Int, defenderDice: Int): DicewarsGame {
     val adj1 = List(DicewarsGame.AREA_MAX) { if (it == 2) 1 else 0 }
     val adj2 = List(DicewarsGame.AREA_MAX) { if (it == 1) 1 else 0 }
     val game = DicewarsGame(
-        pmax = 2,
+        maxPlayers = 2,
         turnOrder = listOf(0, 1),
         turnIndex = 0,
         areas = List(DicewarsGame.AREA_MAX) { areaId ->

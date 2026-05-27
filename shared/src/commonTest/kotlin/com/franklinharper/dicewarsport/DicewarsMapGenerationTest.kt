@@ -16,7 +16,7 @@ class DicewarsMapGenerationTest {
         activeTerritories.forEach { territory ->
             assertTrue(territory.size > 0)
             assertTrue(territory.armyCount in 1..DicewarsGame.MAX_DICE)
-            assertTrue(territory.owner in 0 until game.pmax)
+            assertTrue(territory.owner in 0 until game.maxPlayers)
         }
     }
 
@@ -81,8 +81,8 @@ class DicewarsMapGenerationTest {
         val game = DicewarsGame.generate(7, SequenceRandomSource())
         val map = game.toRenderMap()
 
-        assertEquals(DicewarsGame.XMAX, map.width)
-        assertEquals(DicewarsGame.YMAX, map.height)
+        assertEquals(DicewarsGame.MAX_WIDTH, map.width)
+        assertEquals(DicewarsGame.MAX_HEIGHT, map.height)
         assertEquals(game.cells, map.cells)
         assertEquals(game.cellNeighbors[29].directions, map.cellNeighbors[29].directions)
 

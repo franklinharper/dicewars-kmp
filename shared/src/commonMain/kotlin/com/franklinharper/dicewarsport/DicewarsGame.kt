@@ -4,29 +4,29 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class DicewarsGame(
-    val pmax: Int = 7,
+    val maxPlayers: Int = 7,
     val user: Int = 0,
-    val cells: List<Int> = List(XMAX * YMAX) { 0 },
-    val cellNeighbors: List<CellNeighbors> = List(XMAX * YMAX) { cellIndex ->
+    val cells: List<Int> = List(MAX_WIDTH * MAX_HEIGHT) { 0 },
+    val cellNeighbors: List<CellNeighbors> = List(MAX_WIDTH * MAX_HEIGHT) { cellIndex ->
         CellNeighbors(List(6) { direction -> nextCell(cellIndex, direction) })
     },
     val areas: List<AreaData> = List(AREA_MAX) { AreaData() },
-    val players: List<PlayerData> = List(8) { PlayerData() },
+    val players: List<Player> = List(8) { Player() },
     val turnOrder: List<Int> = List(8) { it },
     val turnIndex: Int = 0,
     val history: List<HistoryData> = emptyList(),
 ) {
     companion object {
-        const val XMAX: Int = 28
-        const val YMAX: Int = 32
+        const val MAX_WIDTH: Int = 28
+        const val MAX_HEIGHT: Int = 32
         const val AREA_MAX: Int = 32
         const val STOCK_MAX: Int = 64
         const val MAX_DICE: Int = 8
         const val AVERAGE_DICE_PLACEMENT: Int = 3
 
         fun nextCell(position: Int, direction: Int): Int {
-            val originX = position % XMAX
-            val originY = position / XMAX
+            val originX = position % MAX_WIDTH
+            val originY = position / MAX_WIDTH
             val rowParity = originY % 2
             val deltaX: Int
             val deltaY: Int
@@ -41,15 +41,15 @@ data class DicewarsGame(
             }
             val x = originX + deltaX
             val y = originY + deltaY
-            if (x < 0 || y < 0 || x >= XMAX || y >= YMAX) return -1
-            return y * XMAX + x
+            if (x < 0 || y < 0 || x >= MAX_WIDTH || y >= MAX_HEIGHT) return -1
+            return y * MAX_WIDTH + x
         }
 
         fun generate(pmax: Int, random: RandomSource, user: Int = 0): DicewarsGame =
             DicewarsMapGenerator.generate(pmax = pmax, random = random, user = user)
     }
 
-    fun currentPlayer(): Int = turnOrder[turnIndex]
+    fun currentPlayerId(): Int = turnOrder[turnIndex]
 
     /**
      * Returns compact neighbor lists for each area.
@@ -65,7 +65,7 @@ data class DicewarsGame(
      */
     private var cachedNeighbors: Array<IntArray>? = null
 
-    fun precomputeNeighbors(): Array<IntArray> {
+    fun neighborIds(): Array<IntArray> {
         cachedNeighbors?.let { return it }
         val result = Array(AREA_MAX) { IntArray(0) }
         for (areaId in 1 until AREA_MAX) {

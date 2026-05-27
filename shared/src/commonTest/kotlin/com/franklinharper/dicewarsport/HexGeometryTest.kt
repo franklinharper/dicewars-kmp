@@ -9,7 +9,7 @@ class HexGeometryTest {
     fun hexGridPositionsOffsetOddRowsByHalfCellWidth() {
         assertEquals(0f to 0f, HexGrid.getCellPosition(0, cellWidth = 30f, cellHeight = 20f))
         assertEquals(30f to 0f, HexGrid.getCellPosition(1, cellWidth = 30f, cellHeight = 20f))
-        assertEquals(15f to 20f, HexGrid.getCellPosition(DicewarsGame.XMAX, cellWidth = 30f, cellHeight = 20f))
+        assertEquals(15f to 20f, HexGrid.getCellPosition(DicewarsGame.MAX_WIDTH, cellWidth = 30f, cellHeight = 20f))
     }
 
     @Test

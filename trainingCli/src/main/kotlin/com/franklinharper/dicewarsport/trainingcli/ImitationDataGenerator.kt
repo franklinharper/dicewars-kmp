@@ -71,7 +71,7 @@ class ImitationDataGenerator(
         val pending = mutableListOf<PendingRecord>()
 
         while (activePlayers.size > 1 && actionsTaken < config.maxActionsPerRound) {
-            val actor = game.currentPlayer()
+            val actor = game.currentPlayerId()
             val participantId = config.participants[actor].id
             val move = strategies[actor].chooseMove(game)
             val chosenActionIndex = NeuralActionEncoder.actionIndexFor(move)

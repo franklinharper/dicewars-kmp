@@ -12,10 +12,10 @@ class Terminator2Bot : AiStrategy {
     private val max = MaxBot()
 
     override fun chooseMove(game: DicewarsGame): Move? {
-        val player = game.currentPlayer()
+        val player = game.currentPlayerId()
         val me = game.players[player]
         if (me.areaCount <= 0) return null
-        val enemies = (0 until game.pmax).filter { it != player && game.players[it].areaCount > 0 }
+        val enemies = (0 until game.maxPlayers).filter { it != player && game.players[it].areaCount > 0 }
         val activeEnemies = enemies.size
         val leader = enemies.maxByOrNull { leaderValue(game, it) }
         val leaderData = leader?.let { game.players[it] }
