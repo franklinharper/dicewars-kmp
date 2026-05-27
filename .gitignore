@@ -17,3 +17,7 @@ local.properties
 *yarn.lock
 __pycache__/
 *.py[cod]
+training/data/*.jsonl.gz
+training/checkpoints/
+models/*.onnx
+androidApp/src/main/assets/models/*.onnx
